@@ -1,0 +1,15 @@
+# build environment
+.env/
+.vscode/
+
+# self-generated
+archives/
+downloads/
+games/
+viewer/
+
+# Python generated
+build/
+dist/
+src/*.egg-info
+src/gravon/__pycache__
