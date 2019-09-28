@@ -1,5 +1,5 @@
-Data science tools for the Kleier archive of Stratego ratings and tournaments
-=============================================================================
+Data science tools for the Kleier archive of Stratego results
+=============================================================
 
 [![Language](https://img.shields.io/badge/language-Python-blue.svg)](https://www.python.org/)
 [![Standard](https://img.shields.io/badge/Python-3.6-blue.svg)](https://en.wikipedia.org/wiki/History_of_Python)
