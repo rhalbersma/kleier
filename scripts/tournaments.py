@@ -25,26 +25,30 @@ def parse_gs(table) -> tuple:
     group_scoring = table.find('thead').find_all('tr')[1].find('th').text
     group, scoring = group_scoring.split('\xa0\xa0')
     group = group.split(': ')[1][:-1]
-    W, D, L = [ 
-        int(score) 
-        for score in scoring.split(': ')[1].split() 
+    W, D, L = [
+        int(score)
+        for score in scoring.split(': ')[1].split()
     ]
     return group, W, D, L
 
 def parse_sr(table, eid, gid) -> (pd.DataFrame, pd.DataFrame):
     df = pd.read_html(str(table), header=3)[0].head(-1)
     df.rename(columns={'#': 'rank', 'Surname': 'sur', 'Prename': 'pre'}, inplace=True)
-    df.rename(columns=lambda x: re.sub(r'(^\d+)', r'R\1', x), inplace=True)    
+    df.rename(columns=lambda x: re.sub(r'(^\d+)', r'R\1', x), inplace=True)
+
+    # Mark missing names as "Anonymous".
+    df.fillna({column: 'Anonymous' for column in ['sur', 'pre']}, inplace=True)
+
     df['eid'] = eid
     df['gid'] = gid
     columns = df.columns.to_list()
     columns = columns[-2:] + columns[:-2]
     df = df[columns]
 
-    df = df.astype(dtype={column: int             for column in ['rank', 'Score']}) 
-    df = df.astype(dtype={column: float           for column in ['Value', 'Change']}) 
-    df = df.astype(dtype={column: pd.Int64Dtype() for column in ['Value', 'Change']}) 
-    df = df.astype(dtype={column: float           for column in ['Eff.Games', 'Buchholz', 'Median']}) 
+    df = df.astype(dtype={column: int             for column in ['rank', 'Score']})
+    df = df.astype(dtype={column: float           for column in ['Value', 'Change']})
+    df = df.astype(dtype={column: pd.Int64Dtype() for column in ['Value', 'Change']})
+    df = df.astype(dtype={column: float           for column in ['Eff.Games', 'Buchholz', 'Median']})
     rounds = list(df.filter(regex='R\d+'))
     standings = df.drop(columns=rounds)
 
@@ -54,13 +58,15 @@ def parse_sr(table, eid, gid) -> (pd.DataFrame, pd.DataFrame):
     columns = columns[1:-1][::-1] + [columns[0]] + [columns[-1]]
     df = df[columns]
 
-    # Strip players' colors
-    df['R'] = df['R'].str.replace(r'(\d+[+=-])[BW]', r'\1', regex=True)
+    # Withdrawal == virtual loss (similar to how bye == virtual win).
+    df['R'].fillna('0-', inplace=True)
 
-    # A withdrawal ('NaN') is a loss ('-') against a virtual player (ranked 0).
-    # This is consistent to how a bye is a win ('+') against a virtual player.
-    df['opponent'] = df['R'].apply(lambda x: 0   if pd.isna(x) else x[:-1])
-    df['result']   = df['R'].apply(lambda x: '-' if pd.isna(x) else x[-1])
+    # Strip the players' color info from the scores.
+    df['R'].replace(r'(\d+[+=-])[BW]', r'\1', inplace=True, regex=True)
+
+    # Split the scores into an opponent's rank and the result.
+    df['opponent'] = df['R'].apply(lambda x: x[:-1])
+    df['result']   = df['R'].apply(lambda x: x[-1])
     df = df.astype(dtype={column: int for column in ['opponent']})
     results = df.drop(columns='R')
 
@@ -101,15 +107,15 @@ def main():
     events = pd.concat([
         tourn_table[0]
         for tourn_table in tourn_tables
-    ], sort=False)
+    ])
     standings = pd.concat([
         tourn_table[1]
         for tourn_table in tourn_tables
-    ], sort=False)
+    ])
     results = pd.concat([
         tourn_table[2]
         for tourn_table in tourn_tables
-    ], sort=False)
+    ])
     kleier.utils.save_dataset(events, 'events')
     kleier.utils.save_dataset(standings, 'standings')
     kleier.utils.save_dataset(results, 'results')
