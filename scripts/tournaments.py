@@ -53,11 +53,15 @@ def parse_sr(table, eid, gid) -> (pd.DataFrame, pd.DataFrame):
     columns = df.columns.to_list()
     columns = columns[1:-1][::-1] + [columns[0]] + [columns[-1]]
     df = df[columns]
+
+    # Strip players' colors
     df['R'] = df['R'].str.replace(r'(\d+[+=-])[BW]', r'\1', regex=True)
-    df['opponent'] = df['R'].apply(lambda x: x if pd.isna(x) else x[:-1])
-    df = df.astype(dtype={column: float           for column in ['opponent']})
-    df = df.astype(dtype={column: pd.Int64Dtype() for column in ['opponent']})
-    df['result'] = df['R'].apply(lambda x: x if pd.isna(x) else x[-1])
+
+    # A withdrawal ('NaN') is a loss ('-') against a virtual player (ranked 0).
+    # This is consistent to how a bye is a win ('+') against a virtual player.
+    df['opponent'] = df['R'].apply(lambda x: 0   if pd.isna(x) else x[:-1])
+    df['result']   = df['R'].apply(lambda x: '-' if pd.isna(x) else x[-1])
+    df = df.astype(dtype={column: int for column in ['opponent']})
     results = df.drop(columns='R')
 
     return standings, results
@@ -97,15 +101,15 @@ def main():
     events = pd.concat([
         tourn_table[0]
         for tourn_table in tourn_tables
-    ])
+    ], sort=False)
     standings = pd.concat([
         tourn_table[1]
         for tourn_table in tourn_tables
-    ])
+    ], sort=False)
     results = pd.concat([
         tourn_table[2]
         for tourn_table in tourn_tables
-    ])
+    ], sort=False)
     kleier.utils.save_dataset(events, 'events')
     kleier.utils.save_dataset(standings, 'standings')
     kleier.utils.save_dataset(results, 'results')
