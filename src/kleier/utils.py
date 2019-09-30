@@ -16,3 +16,9 @@ def save_dataset(df: pd.DataFrame, name: str) -> None:
 
 def load_dataset(name: str) -> pd.DataFrame:
     return pd.read_pickle(get_resource(name + '.pkl'))
+
+def data_listdir() -> list:
+    return [
+        os.path.splitext(df)[0]
+        for df in pkg_resources.resource_listdir(__name__, 'data')
+    ]
