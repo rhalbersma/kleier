@@ -11,7 +11,7 @@ setup(
     name='kleier',
     version='0.1.0-dev0',
     description='Data science tools for the Kleier archive of Stratego results',
-    url='https://github.com/rhalbersma/kleir',
+    url='https://github.com/rhalbersma/kleier',
     author='Rein Halbersma',
     license='Boost Software License 1.0 (BSL-1.0)',
     packages=find_packages(where='src'),
@@ -20,10 +20,13 @@ setup(
         'kleier': ['data/*.pkl'],
     },    
     install_requires=[
-        'bs4', 'lxml', 'numpy', 'pandas', 'requests'
+        'bs4', 'lxml', 'pandas', 'requests'
     ],
     python_requires='>=3.6',
     classifiers=[
+        'Development Status :: 2 - Pre-Alpha'
+        'Intended Audience :: Science/Research'
+        'License :: OSI Approved :: Boost Software License 1.0 (BSL-1.0)'
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
