@@ -7,7 +7,7 @@ import pandas as pd
 
 import kleier.utils
 
-from . import player, tourn_table
+import player, tourn_table
 
 def opponents(games: pd.DataFrame) -> pd.DataFrame:
     players1 = games[['pid1', 'name1']].drop_duplicates()
@@ -49,6 +49,12 @@ def players_results(games: pd.DataFrame) -> tuple:
     results.reset_index(drop=True, inplace=True)
 
     return players, results
+
+    event_info['num_rounds'] = cross_table.groupby(['eid', 'gid'])['round'].max().reset_index(drop=True)
+    event_info['num_players'] = standings.groupby(['eid', 'gid'])['rank'].max().reset_index(drop=True)
+    event_info['num_games'] = len(cross_table.query('rank2 != 0').index)
+
+
 
 def main():
     # player.download()
