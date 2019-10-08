@@ -50,10 +50,9 @@ def players_results(games: pd.DataFrame) -> tuple:
 
     return players, results
 
-    event_info['num_rounds'] = cross_table.groupby(['eid', 'gid'])['round'].max().reset_index(drop=True)
-    event_info['num_players'] = standings.groupby(['eid', 'gid'])['rank'].max().reset_index(drop=True)
-    event_info['num_games'] = len(cross_table.query('rank2 != 0').index)
-
+    event_info['rounds'] = cross_table.groupby(['eid', 'gid'])['round'].max().reset_index(drop=True)
+    event_info['players'] = standings.groupby(['eid', 'gid'])['rank'].max().reset_index(drop=True)
+    event_info['games'] = cross_table.query('rank2 != 0').groupby(['eid', 'gid']).size().reset_index(drop=True)
 
 
 def main():

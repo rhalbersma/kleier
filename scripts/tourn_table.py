@@ -25,19 +25,19 @@ def _parse_table(eid, gid, table) -> tuple:
 
     group, scoring = group_scoring.split('\xa0\xa0')
     group = group.split(': ')[1][:-1]
-    pts_W, pts_D, pts_L = [
+    W, D, L = [
         int(points)
         for points in scoring.split(': ')[1].split()
     ]
 
     event_info = pd.DataFrame(
-        data   =[(eid,   gid,   name,   place,   date,   group,   pts_W,   pts_D,   pts_L)],
-        columns=['eid', 'gid', 'name', 'place', 'date', 'group', 'pts_W', 'pts_D', 'pts_L']
+        data   =[(eid,   gid,   name,   place,   date,   group,   W,   D,   L)],
+        columns=['eid', 'gid', 'name', 'place', 'date', 'group', 'W', 'D', 'L']
     )
 
     df = pd.read_html(str(table), header=3)[0]
     last_row = df.tail(1)
-    if str(last_row.iloc[0, 0]).startswith("Results from:"):
+    if str(last_row.iloc[0, 0]).startswith('Results from: '):
         df.drop(last_row.index, inplace=True)
 
     df.rename(columns=lambda x: str.lower(x).replace('.', '_'), inplace=True)
@@ -47,7 +47,7 @@ def _parse_table(eid, gid, table) -> tuple:
         'prename': 'pre',
         'value'  : 'rating'
     }, inplace=True)
-    df.rename(columns=lambda x: re.sub(r'(^\d+)', r'r\1', x), inplace=True)
+    df.rename(columns=lambda x: re.sub(r'(^\d+)', r'R\1', x), inplace=True)
 
     # Mark missing names as "Anonymous".
     df.fillna({column: 'Anonymous' for column in ['sur', 'pre']}, inplace=True)
@@ -62,27 +62,27 @@ def _parse_table(eid, gid, table) -> tuple:
     df = df.astype(dtype={column: float           for column in ['rating', 'change']})
     df = df.astype(dtype={column: pd.Int64Dtype() for column in ['rating', 'change']})
     df = df.astype(dtype={column: float           for column in ['eff_games', 'buchholz', 'median']})
-    rounds = list(df.filter(regex='r\d+'))
+    rounds = list(df.filter(regex='R\d+'))
     standings = df.drop(columns=rounds)
 
-    df = pd.wide_to_long(df.filter(['eid', 'gid', 'rank'] + rounds), ['r'], i='rank', j='round')
+    df = pd.wide_to_long(df.filter(['eid', 'gid', 'rank'] + rounds), ['R'], i='rank', j='round')
     df.reset_index(inplace=True)
     columns = df.columns.to_list()
-    columns = columns[2:4][::-1] + columns[0:2][::-1] + [columns[-1]]
+    columns = columns[2:4] + columns[0:2][::-1] + [columns[-1]]
     df = df[columns]
     df.rename(columns={'rank': 'rank1'}, inplace=True)
 
     # Withdrawal == virtual loss (similar to how bye == virtual win).
-    df['r'].fillna('0-', inplace=True)
+    df['R'].fillna('0-', inplace=True)
 
     # Strip the players' color info from the scores.
-    df['r'].replace(r'(\d+[+=-])[BW]', r'\1', inplace=True, regex=True)
+    df['R'].replace(r'(\d+[+=-])[BW]', r'\1', inplace=True, regex=True)
 
     # Split the scores into an opponent's rank and the result.
-    df['rank2']  = df['r'].apply(lambda x: x[:-1])
-    df['result'] = df['r'].apply(lambda x: x[-1])
+    df['rank2']  = df['R'].apply(lambda x: x[:-1])
+    df['result'] = df['R'].apply(lambda x: x[-1])
     df = df.astype(dtype={column: int for column in ['rank2']})
-    cross_table = df.drop(columns='r')
+    cross_table = df.drop(columns='R')
 
     return event_info, standings, cross_table
 
@@ -93,7 +93,7 @@ def _tourn_table(eid) -> tuple:
     soup = bs4.BeautifulSoup(response.content, 'lxml')
     tables = soup.find_all('table', {'summary': 'Stratego Tournament Cross-Table'})
     return tuple(
-        pd.concat(list(t), sort=False).reset_index(drop=True)
+        pd.concat(list(t), ignore_index=True, sort=False)
         for t in zip(*[
             _parse_table(eid, gid, table)
             for gid, table in enumerate(tables)
@@ -102,7 +102,7 @@ def _tourn_table(eid) -> tuple:
 
 def download(num_eid=660):
     event_info, standings, cross_table = tuple(
-        pd.concat(list(t), sort=False).reset_index(drop=True)
+        pd.concat(list(t), ignore_index=True, sort=False)
         for t in zip(*[
             _tourn_table(eid)
             for eid in range(1, num_eid + 1)

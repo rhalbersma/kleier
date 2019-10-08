@@ -77,7 +77,7 @@ def _player(pid) -> tuple:
 
 def download(num_pid=2952):
     player_info, game_balance = tuple(
-        pd.concat(list(t), sort=False)
+        pd.concat(list(t), ignore_index=True, sort=False)
         for t in zip(*[
             _player(pid)
             for pid in range(1, num_pid + 1)
