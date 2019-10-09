@@ -9,6 +9,68 @@ import kleier.utils
 
 import player, tourn_table
 
+def download():
+    player.download()
+    tourn_table.download()
+
+def load_datasets() -> tuple:
+    player_info  = kleier.load_dataset('player_info')
+    game_balance = kleier.load_dataset('game_balance')
+    event_info   = kleier.load_dataset('event_info')
+    standings    = kleier.load_dataset('standings')
+    cross_table  = kleier.load_dataset('cross_table')
+    return player_info, game_balance, event_info, standings, cross_table
+
+def create_players(player_info: pd.DataFrame, standings: pd.DataFrame, game_balance: pd.DataFrame) -> tuple:
+    p0 = player_info
+    p1 = (standings
+        .loc[:, ['sur', 'pre', 'nationality']]
+        .drop_duplicates()
+        .assign(name = lambda x: x.pre + ' ' + x.sur))
+    p2 = pd.merge(p0, p1, how='outer', on=['name'], indicator=True, validate='one_to_one')
+    p3 = (p2
+        .query('_merge == "both"')
+        .drop(columns=['name', '_merge'])
+        .reset_index(drop=True))
+    no_standings = (p2
+        .query('_merge != "both"')
+        .assign(sur = lambda x: x.name.str.split(expand=True)[1])
+        .assign(pre = lambda x: x.name.str.split(expand=True)[0])
+        .assign(rating = pd.np.nan)
+        .drop(columns=['name', '_merge'])
+        .reset_index(drop=True))
+
+    p4 = (game_balance
+        .loc[:, ['name1']]
+        .rename(columns=lambda x: x[:-1])
+        .drop_duplicates())
+    p5 = (game_balance
+        .loc[:, ['sur2', 'pre2', 'rating2']]
+        .rename(columns=lambda x: x[:-1])
+        .drop_duplicates() 
+        .assign(name = lambda x: x.pre + ' ' + x.sur))
+    p6 = (pd.merge(p4, p5, how='outer', on=['name'], indicator=True, validate='one_to_one')
+        .drop(columns=['name']))        
+    p7 = p6.drop(columns=['_merge'])
+
+    p8 = pd.merge(p3, p7, how='outer', on=['sur', 'pre'], indicator=True, validate='one_to_one')
+    players = (p8
+        .drop(columns=['_merge'])
+        .append(no_standings)
+        .sort_values(by=['pid'])
+        .reset_index(drop=True))
+    no_results = (p8
+        .query('_merge != "both"')
+        .drop(columns=['_merge'])
+        .reset_index(drop=True))
+
+    p9 = (p6
+        .query('_merge != "both"')
+        .drop(columns=['_merge']))
+    no_name = pd.merge(p3, p9, how='right', on=['sur', 'pre'], validate='one_to_one')
+
+    return players, no_name, no_results, no_standings
+
 def opponents(games: pd.DataFrame) -> pd.DataFrame:
     players1 = games[['pid1', 'name1']].drop_duplicates()
     players2 = games[['sur2', 'pre2', 'rating2']].drop_duplicates()
@@ -56,11 +118,4 @@ def players_results(games: pd.DataFrame) -> tuple:
 
 
 def main():
-    # player.download()
-    player_info = kleier.load_dataset('player_info')
-    game_balance = kleier.load_dataset('game_balance')
-
-    # tourn_table.download()
-    event_info = kleier.load_dataset('event_info')
-    standings = kleier.load_dataset('standings')
-    cross_table = kleier.load_dataset('cross_table')
+    pass
