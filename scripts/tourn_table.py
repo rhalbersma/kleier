@@ -42,15 +42,12 @@ def _parse_table(eid, gid, table) -> tuple:
 
     df.rename(columns=lambda x: str.lower(x).replace('.', '_'), inplace=True)
     df.rename(columns={
-        '#'      : 'rank', 
-        'surname': 'sur', 
+        '#'      : 'rank',
+        'surname': 'sur',
         'prename': 'pre',
         'value'  : 'rating'
     }, inplace=True)
     df.rename(columns=lambda x: re.sub(r'(^\d+)', r'R\1', x), inplace=True)
-
-    # Mark missing names as "Anonymous".
-    df.fillna({column: 'Anonymous' for column in ['sur', 'pre']}, inplace=True)
 
     df['eid'] = eid
     df['gid'] = gid
@@ -68,7 +65,7 @@ def _parse_table(eid, gid, table) -> tuple:
     df = pd.wide_to_long(df.filter(['eid', 'gid', 'rank'] + rounds), ['R'], i='rank', j='round')
     df.reset_index(inplace=True)
     columns = df.columns.to_list()
-    columns = columns[2:4] + columns[0:2][::-1] + [columns[-1]]
+    columns = columns[:-1][::-1] + [columns[-1]]
     df = df[columns]
     df.rename(columns={'rank': 'rank1'}, inplace=True)
 

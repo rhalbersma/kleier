@@ -27,49 +27,47 @@ def create_players(player_info: pd.DataFrame, standings: pd.DataFrame, game_bala
         .loc[:, ['sur', 'pre', 'nationality']]
         .drop_duplicates()
         .assign(name = lambda x: x.pre + ' ' + x.sur))
-    p2 = pd.merge(p0, p1, how='outer', on=['name'], indicator=True, validate='one_to_one')
+    p2 = pd.merge(
+        p0, p1, how='outer', on=['name'],
+        indicator=True, validate='one_to_one')
     p3 = (p2
+        .query('_merge != "both"')
+        .assign(
+            sur = lambda x: x.name.str.split(expand=True)[1],
+            pre = lambda x: x.name.str.split(expand=True)[0])
+        .drop(columns=['name', '_merge']))
+    p4 = (p2
         .query('_merge == "both"')
         .drop(columns=['name', '_merge'])
-        .reset_index(drop=True))
-    no_standings = (p2
-        .query('_merge != "both"')
-        .assign(sur = lambda x: x.name.str.split(expand=True)[1])
-        .assign(pre = lambda x: x.name.str.split(expand=True)[0])
-        .assign(rating = pd.np.nan)
-        .drop(columns=['name', '_merge'])
-        .reset_index(drop=True))
+        .append(p3)
+        .sort_values('pid'))
 
-    p4 = (game_balance
+    p5 = (game_balance
         .loc[:, ['name1']]
         .rename(columns=lambda x: x[:-1])
         .drop_duplicates())
-    p5 = (game_balance
+    p6 = (game_balance
         .loc[:, ['sur2', 'pre2', 'rating2']]
         .rename(columns=lambda x: x[:-1])
-        .drop_duplicates() 
+        .drop_duplicates()
         .assign(name = lambda x: x.pre + ' ' + x.sur))
-    p6 = (pd.merge(p4, p5, how='outer', on=['name'], indicator=True, validate='one_to_one')
-        .drop(columns=['name']))        
-    p7 = p6.drop(columns=['_merge'])
+    p7 = (pd.merge(p5, p6, how='outer', on=['name'], validate='one_to_one')
+        .drop(columns=['name']))
 
-    p8 = pd.merge(p3, p7, how='outer', on=['sur', 'pre'], indicator=True, validate='one_to_one')
-    players = (p8
-        .drop(columns=['_merge'])
-        .append(no_standings)
-        .sort_values(by=['pid'])
+    return pd.merge(
+        p4, p7, how='outer', on=['sur', 'pre'],
+        validate='one_to_one')
+
+def create_standings(standings: pd.DataFrame, players: pd.DataFrame):
+    s0 = standings
+    p0 = (players
+        .drop(columns=['rating']))
+    s1 = (pd.merge(s0, p0)
+        .sort_values(['eid', 'gid', 'rank'])
         .reset_index(drop=True))
-    no_results = (p8
-        .query('_merge != "both"')
-        .drop(columns=['_merge'])
-        .reset_index(drop=True))
-
-    p9 = (p6
-        .query('_merge != "both"')
-        .drop(columns=['_merge']))
-    no_name = pd.merge(p3, p9, how='right', on=['sur', 'pre'], validate='one_to_one')
-
-    return players, no_name, no_results, no_standings
+    columns = s1.columns.to_list()
+    columns = columns[:3] + [columns[-1]] + columns[3:-1]
+    return s1[columns]
 
 def opponents(games: pd.DataFrame) -> pd.DataFrame:
     players1 = games[['pid1', 'name1']].drop_duplicates()
