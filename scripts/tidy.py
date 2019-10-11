@@ -7,113 +7,80 @@ import pandas as pd
 
 import kleier.utils
 
-import player, tourn_table
+import player, event
 
-def download():
-    player.download()
-    tourn_table.download()
-
-def load_datasets() -> tuple:
-    player_info  = kleier.load_dataset('player_info')
-    game_balance = kleier.load_dataset('game_balance')
-    event_info   = kleier.load_dataset('event_info')
-    standings    = kleier.load_dataset('standings')
-    cross_table  = kleier.load_dataset('cross_table')
-    return player_info, game_balance, event_info, standings, cross_table
-
-def create_players(player_info: pd.DataFrame, standings: pd.DataFrame, game_balance: pd.DataFrame) -> tuple:
-    p0 = player_info
-    p1 = (standings
-        .loc[:, ['sur', 'pre', 'nationality']]
+def finalize_player_index(player_index: pd.DataFrame, event_table: pd.DataFrame, player_cross: pd.DataFrame) -> pd.DataFrame:
+    pid_name = player_index
+    sur_pre_nat_name = (event_table
+        .loc[:, ['sur', 'pre', 'nat']]
         .drop_duplicates()
         .assign(name = lambda x: x.pre + ' ' + x.sur))
-    p2 = pd.merge(
-        p0, p1, how='outer', on=['name'],
-        indicator=True, validate='one_to_one')
-    p3 = (p2
+    pid_sur_pre_nat = pd.merge(
+        pid_name, sur_pre_nat_name,
+        how='outer', indicator=True, validate='one_to_one')
+    pid_sur_pre_no_nat = (pid_sur_pre_nat
         .query('_merge != "both"')
         .assign(
             sur = lambda x: x.name.str.split(expand=True)[1],
             pre = lambda x: x.name.str.split(expand=True)[0])
         .drop(columns=['name', '_merge']))
-    p4 = (p2
+    pid_sur_pre_nat = (pid_sur_pre_nat
         .query('_merge == "both"')
         .drop(columns=['name', '_merge'])
-        .append(p3)
+        .append(pid_sur_pre_no_nat)
         .sort_values('pid'))
-
-    p5 = (game_balance
+    name = (player_cross
         .loc[:, ['name1']]
         .rename(columns=lambda x: x[:-1])
         .drop_duplicates())
-    p6 = (game_balance
+    sur_pre_rating_name = (player_cross
         .loc[:, ['sur2', 'pre2', 'rating2']]
         .rename(columns=lambda x: x[:-1])
         .drop_duplicates()
         .assign(name = lambda x: x.pre + ' ' + x.sur))
-    p7 = (pd.merge(p5, p6, how='outer', on=['name'], validate='one_to_one')
+    sur_pre_rating = (pd.merge(
+        name, sur_pre_rating_name,
+        how='outer', validate='one_to_one')
         .drop(columns=['name']))
+    pid_sur_pre_nat_rating = pd.merge(
+        pid_sur_pre_nat, sur_pre_rating,
+        how='outer', validate='one_to_one')
+    return pid_sur_pre_nat_rating
 
-    return pd.merge(
-        p4, p7, how='outer', on=['sur', 'pre'],
-        validate='one_to_one')
-
-def create_standings(standings: pd.DataFrame, players: pd.DataFrame):
-    s0 = standings
-    p0 = (players
+def event_table_add_pid(event_table: pd.DataFrame, player_index: pd.DataFrame) -> pd.DataFrame:
+    eid_gid_rank_sur_pre_nat = event_table
+    pid_sur_pre_nat = (player_index
         .drop(columns=['rating']))
-    s1 = (pd.merge(s0, p0)
+    eid_gid_rank_pid = (pd
+        .merge(eid_gid_rank_sur_pre_nat, pid_sur_pre_nat)
         .sort_values(['eid', 'gid', 'rank'])
         .reset_index(drop=True))
-    columns = s1.columns.to_list()
+    columns = eid_gid_rank_pid.columns.to_list()
     columns = columns[:3] + [columns[-1]] + columns[3:-1]
-    return s1[columns]
+    return eid_gid_rank_pid[columns]
 
-def opponents(games: pd.DataFrame) -> pd.DataFrame:
-    players1 = games[['pid1', 'name1']].drop_duplicates()
-    players2 = games[['sur2', 'pre2', 'rating2']].drop_duplicates()
-    players2['name2'] = players2.apply(lambda x: ' '.join([x['pre2'], x['sur2']]), axis=1)
-    players = players1.merge(players2, 'outer', left_on='name1', right_on='name2')
-    players.drop(['name1', 'name2'], axis=1, inplace=True)
-    players.rename(columns=lambda x: re.sub(r'(.*)\d', r'\1', x), inplace=True)
-    players.fillna({column: 0 for column in ['pid']}, inplace=True)
-    players = players.astype(dtype={'pid': int})
-    players.sort_values(by=['pid'], inplace=True)
-    players.reset_index(drop=True, inplace=True)
-    return players
-
-def players_results(games: pd.DataFrame) -> tuple:
-    players = unique_players(games)
-    players1 = players.rename(columns=lambda x: x + '1')
-    players2 = players.rename(columns=lambda x: x + '2')
-    results = games.merge(players1).merge(players2)
-    results.drop(['name1'], axis=1, inplace=True)
-    columns = results.columns.to_list()
-    columns = [columns[0]] + columns[-4:-1] + columns[1:4] + [columns[-1]] + columns[4:-4]
-    results = results[columns]
-
-    anonymous = results.query('pid2 == 0')
-    columns = anonymous.columns.to_list()
-    columns = columns[7:11] + columns[4:7] + columns[:4] + columns[11:]
-    anonymous = anonymous[columns]
-    anonymous['expected'] = 1 - anonymous['expected']
-    anonymous['observed'] = 1 - anonymous['observed']
-    anonymous['net_yield'] = -anonymous['net_yield']
-    anonymous.rename(columns={
-        'pid2': 'pid1', 'sur2': 'sur1', 'pre2': 'pre1', 'rating2': 'rating1',
-        'pid1': 'pid2', 'sur1': 'sur2', 'pre1': 'pre2', 'rating1': 'rating2'
-    }, inplace=True)
-
-    results = pd.concat([anonymous, results])
-    results.sort_values(by=['pid1', 'date', 'rating2', 'sur2', 'pre2'], ascending=[True, True, False, False, False], inplace=True)
-    results.reset_index(drop=True, inplace=True)
-
-    return players, results
-
-    event_info['rounds'] = cross_table.groupby(['eid', 'gid'])['round'].max().reset_index(drop=True)
-    event_info['players'] = standings.groupby(['eid', 'gid'])['rank'].max().reset_index(drop=True)
-    event_info['games'] = cross_table.query('rank2 != 0').groupby(['eid', 'gid']).size().reset_index(drop=True)
-
+def event_cross_add_player(event_cross: pd.DataFrame, event_table: pd.DataFrame) -> pd.DataFrame:
+    rank1_rank2 = event_cross
+    eid_cols = ['eid', 'gid']
+    pid_cols = ['rank', 'pid', 'sur', 'pre', 'nat', 'rating']
+    rank_pid = (event_table
+        .loc[:, eid_cols + pid_cols])
+    rank1_pid1 = rank_pid.rename(columns={c: c + '1' for c in pid_cols})
+    rank2_pid2 = rank_pid.rename(columns={c: c + '2' for c in pid_cols})
+    rank1_rank2_pid1 = (pd
+        .merge(rank1_rank2, rank1_pid1, how='left'))
+    rank1_rank2_pid1_pid2 = (pd.
+        merge(rank1_rank2_pid1, rank2_pid2, how='left'))
 
 def main():
-    pass
+    player.download()
+    event.download()
+
+    player_index = kleier.load_dataset('player_index')
+    player_cross = kleier.load_dataset('player_cross')
+    event_index  = kleier.load_dataset('event_index')
+    event_table  = kleier.load_dataset('event_table')
+    event_cross  = kleier.load_dataset('event_cross')
+
+    player_index = finalize_player_index(player_index, event_table, player_cross)
+    event_table = event_table_add_pid(event_table, player_index)

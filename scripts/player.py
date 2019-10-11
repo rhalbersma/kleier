@@ -48,20 +48,20 @@ def _player(pid) -> tuple:
     tables = soup.find_all('table')
     assert len(header) != 0 or len(tables) == 0
     name = pd.np.nan if len(header) == 0 else header[0].text.split('History of ')[1]
-    player_info = pd.DataFrame(
+    player_index = pd.DataFrame(
         data   =[(pid,   name)],
         columns=['pid', 'name']
     )
-    game_balance = None if len(tables) == 0 else _parse_table(pid, tables[0])
-    return player_info, game_balance
+    player_cross = None if len(tables) == 0 else _parse_table(pid, tables[0])
+    return player_index, player_cross
 
 def download(num_pid=2952):
-    player_info, game_balance = tuple(
+    player_index, player_cross = tuple(
         pd.concat(list(t), ignore_index=True, sort=False)
         for t in zip(*[
             _player(pid)
             for pid in range(1, num_pid + 1)
         ])
     )
-    kleier.utils._save_dataset(player_info, 'player_info')
-    kleier.utils._save_dataset(game_balance, 'game_balance')
+    kleier.utils._save_dataset(player_index, 'player_index')
+    kleier.utils._save_dataset(player_cross, 'player_cross')
