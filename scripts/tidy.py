@@ -306,8 +306,8 @@ def event_cross_ratings(event_cross: pd.DataFrame) -> pd.DataFrame:
 
 
 def main():
-    #player.download()
-    #event.download()
+    #player.main()
+    #event.main()
 
     player_index = kleier.load_dataset('player_index')
     player_cross = kleier.load_dataset('player_cross')

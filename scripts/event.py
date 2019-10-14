@@ -82,7 +82,7 @@ def _parse_table(eid, gid, table) -> tuple:
 
     return event_index, event_table, event_cross
 
-def _event(eid) -> tuple:
+def download(eid) -> tuple:
     url = f'https://www.kleier.net/cgi/tourn_table.php?eid={eid}'
     response = requests.get(url)
     assert response.status_code == 200
@@ -96,14 +96,17 @@ def _event(eid) -> tuple:
         ])
     )
 
-def download(num_eid=660):
-    event_index, event_table, event_cross = tuple(
+def download_all(eids=range(1, 660 + 1)):
+    return tuple(
         pd.concat(list(t), ignore_index=True, sort=False)
         for t in zip(*[
-            _event(eid)
-            for eid in range(1, num_eid + 1)
+            download(eid)
+            for eid in eids
         ])
     )
+
+def main():
+    event_index, event_table, event_cross = download_all()
     kleier.utils._save_dataset(event_index, 'event_index')
     kleier.utils._save_dataset(event_table, 'event_table')
     kleier.utils._save_dataset(event_cross, 'event_cross')
