@@ -1,7 +1,12 @@
+#!/usr/bin/env python
+
 #          Copyright Rein Halbersma 2019.
 # Distributed under the Boost Software License, Version 1.0.
 #    (See accompanying file LICENSE_1_0.txt or copy at
 #          http://www.boost.org/LICENSE_1_0.txt)
+
+import re
+import sys
 
 import bs4
 import pandas as pd
@@ -44,8 +49,9 @@ def parse(player_cross: pd.DataFrame) -> pd.DataFrame:
     columns = player_cross.columns.to_list()
     return (player_cross
         .loc[:, columns[-2:] + columns[:-2]]
-        .rename(columns=lambda x: str.lower(x).replace(' ', '_'))
-        .rename(columns=lambda x: 'date' if str(x).startswith('date') else x)
+        .rename(columns=lambda x: x.lower())
+        .rename(columns=lambda x: x.replace(' ', '_'))
+        .rename(columns=lambda x: re.sub(r'(date).*', r'\1', x))
         .rename(columns={
             'surname': 'sur2',
             'prename': 'pre2',
@@ -64,3 +70,6 @@ def main():
     player_index, player_cross = download_all()
     kleier.utils._save_dataset(player_index, 'player_index')
     kleier.utils._save_dataset(player_cross, 'player_cross')
+
+if __name__ == '__main__':
+    sys.exit(main())
