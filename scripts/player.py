@@ -20,23 +20,20 @@ def download(pid) -> tuple:
     assert response.status_code == 200
     soup = bs4.BeautifulSoup(response.content, 'lxml')
     header = soup.find_all('h1')
-    tables = soup.find_all('table')
-    assert header or not tables
+    table  = soup.find_all('table')
+    assert header or not table
     name = '' if not header else header[0].text.split('History of ')[1]
     player_index = pd.DataFrame(
         data   =[(pid,   name)],
         columns=['pid', 'name']
     )
-    player_cross = None if not tables else (pd
-        .read_html(str(tables[0]), header=2)[0]
-        .assign(
-            pid1  = pid,
-            name1 = name
-        )
+    player_cross = None if not table else (pd
+        .read_html(str(table[0]), header=2)[0]
+        .assign(pid = pid)
     )
     return player_index, player_cross
 
-def download_all(pids=range(1, 2952 + 1)) -> tuple:
+def download_all(pids) -> tuple:
     return tuple(
         pd.concat(list(t), ignore_index=True, sort=False)
         for t in zip(*[
@@ -45,29 +42,25 @@ def download_all(pids=range(1, 2952 + 1)) -> tuple:
         ])
     )
 
-def parse(player_cross: pd.DataFrame) -> pd.DataFrame:
-    columns = player_cross.columns.to_list()
-    return (player_cross
-        .loc[:, columns[-2:] + columns[:-2]]
+def parse_cross(df: pd.DataFrame) -> pd.DataFrame:
+    columns = df.columns.to_list()
+    return (df
+        .loc[:, columns[-1:] + columns[:-1]]
         .rename(columns=lambda x: x.lower())
         .rename(columns=lambda x: x.replace(' ', '_'))
         .rename(columns=lambda x: re.sub(r'(date).*', r'\1', x))
         .rename(columns={
+            'pid'    : 'pid1',
             'surname': 'sur2',
             'prename': 'pre2',
             'rating' : 'rating2'
         })
         .astype(dtype={'date'   : 'datetime64[ns]'})
         .astype(dtype={'rating2': pd.Int64Dtype()})
-        .sort_values(
-            by       =['pid1', 'date', 'rating2'],
-            ascending=[ True,   True,   False   ]
-        )
-        .reset_index(drop=True)
     )
 
 def main():
-    player_index, player_cross = download_all()
+    player_index, player_cross = download_all(range(1, 1 + 2954))
     kleier.utils._save_dataset(player_index, 'player_index')
     kleier.utils._save_dataset(player_cross, 'player_cross')
 
