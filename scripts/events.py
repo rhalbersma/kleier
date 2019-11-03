@@ -47,7 +47,7 @@ def _tourn_table(eid: int, gid: int, table: bs4.element.Tag) -> pd.DataFrame:
     return (pd
         .read_html(str(table), header=[2, 3])[0]
         .assign(
-            eid = eid, 
+            eid = eid,
             gid = gid
         )
         .pipe(lambda x: x.loc[:, x.columns.to_list()[-2:] + x.columns.to_list()[:-2]])

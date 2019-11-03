@@ -5,7 +5,6 @@
 #    (See accompanying file LICENSE_1_0.txt or copy at
 #          http://www.boost.org/LICENSE_1_0.txt)
 
-import re
 import sys
 
 import bs4
@@ -64,9 +63,9 @@ def download_all(pids: Sequence[int]) -> Tuple[pd.DataFrame]:
 def format_games(df: pd.DataFrame) -> pd.DataFrame:
     return (df
         .pipe(lambda x: x.set_axis(x.columns.to_flat_index().map('_'.join), axis='columns', inplace=False))
-        .rename(columns=lambda x: x.lower())
+        .rename(columns=lambda x: x.replace(u'\xa0\u2191', ''))
         .rename(columns=lambda x: x.replace(' ', '_'))
-        .rename(columns=lambda x: re.sub(r'(date).+$', r'\1', x))
+        .rename(columns=lambda x: x.lower())
         .astype(dtype={'event_date'     : 'datetime64[ns]'})
         .astype(dtype={'opponent_rating': pd.Int64Dtype()})
     )
