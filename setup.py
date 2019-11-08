@@ -20,7 +20,7 @@ setup(
         'kleier': ['data/*.pkl'],
     },    
     install_requires=[
-        'bs4', 'lxml', 'pandas', 'requests'
+        'bs4', 'lxml', 'numpy', 'pandas', 'requests', 'scipy'
     ],
     python_requires='>=3.6',
     classifiers=[

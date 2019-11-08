@@ -132,6 +132,7 @@ def format_standings(df: pd.DataFrame) -> pd.DataFrame:
         .astype(dtype={column: float           for column in ['rating_value', 'rating_change']})
         .astype(dtype={column: pd.Int64Dtype() for column in ['rating_value', 'rating_change']})
         .astype(dtype={column: float           for column in ['rating_eff_games', 'standings_buchholz', 'standings_median']})
+        .astype(dtype={'standings_compa': 'category'})
     )
 
 def format_results(df: pd.DataFrame) -> pd.DataFrame:
@@ -152,6 +153,7 @@ def format_results(df: pd.DataFrame) -> pd.DataFrame:
         )
         .loc[:, ['eid', 'gid', 'round', 'rank', 'opponent', 'result']]
         .astype(dtype={column: int for column in ['rank', 'opponent']})
+        .astype(dtype={'result': 'category'})
     )
 
 def main(max_eid: int) -> Tuple[pd.DataFrame]:

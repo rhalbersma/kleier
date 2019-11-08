@@ -13,7 +13,8 @@ import scipy.stats as ss
 
 import kleier.utils
 
-import events, players
+import get_events
+import get_players
 
 def player_index_merge_pinf(player_index: pd.DataFrame, event_table: pd.DataFrame, player_cross: pd.DataFrame) -> pd.DataFrame:
     pid_name = player_index
@@ -192,14 +193,14 @@ def event_cross_ratings(event_cross: pd.DataFrame) -> pd.DataFrame:
             'Rp': int}))
 
 def main():
-    players.main(2954)
-    events.main(662)
+    get_events.main(664)
+    get_players.main(2962)
 
-    player_index = kleier.load_dataset('player_index')
-    player_cross = kleier.load_dataset('player_cross')
-    event_index  = kleier.load_dataset('event_index')
-    event_table  = kleier.load_dataset('event_table')
-    event_cross  = kleier.load_dataset('event_cross')
+    events      = kleier.load_dataset('events')
+    standings   = kleier.load_dataset('standings')
+    results     = kleier.load_dataset('results')
+    players     = kleier.load_dataset('players')
+    games       = kleier.load_dataset('games')
 
     player_index = player_index_merge_pinf(player_index, event_table, player_cross)
 

@@ -63,6 +63,7 @@ def download_all(pids: Sequence[int]) -> Tuple[pd.DataFrame]:
 def format_games(df: pd.DataFrame) -> pd.DataFrame:
     return (df
         .pipe(lambda x: x.set_axis(x.columns.to_flat_index().map('_'.join), axis='columns', inplace=False))
+        .rename(columns=lambda x: x.strip('_'))
         .rename(columns=lambda x: x.replace(u'\xa0\u2191', ''))
         .rename(columns=lambda x: x.replace(' ', '_'))
         .rename(columns=lambda x: x.lower())
