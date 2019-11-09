@@ -65,7 +65,7 @@ def _results(tourn_table: pd.DataFrame) -> pd.DataFrame:
         .reset_index()
     )
 
-def event_group_table(eid: int, gid: int, table: bs4.element.Tag) -> Tuple[pd.DataFrame]:
+def _event_group_table(eid: int, gid: int, table: bs4.element.Tag) -> Tuple[pd.DataFrame]:
     tourn_table = _tourn_table(eid, gid, table)
     last_row = tourn_table.tail(1)
     results_from, sep = str(last_row.iloc[0, 2]), 'Results from: '
@@ -85,7 +85,7 @@ def event_group_table(eid: int, gid: int, table: bs4.element.Tag) -> Tuple[pd.Da
     results = _results(tourn_table)
     return event, standings, results
 
-def download(eid: int) -> Tuple[pd.DataFrame]:
+def _download(eid: int) -> Tuple[pd.DataFrame]:
     assert 1 <= eid
     url = f'https://www.kleier.net/cgi/tourn_table.php?eid={eid}'
     response = requests.get(url)
@@ -95,7 +95,7 @@ def download(eid: int) -> Tuple[pd.DataFrame]:
     events, standings, results = tuple(
         pd.concat(list(t), ignore_index=True, sort=False)
         for t in zip(*[
-            event_group_table(eid, gid, table)
+            _event_group_table(eid, gid, table)
             for gid, table in enumerate(tables)
         ])
     )
@@ -112,11 +112,11 @@ def download(eid: int) -> Tuple[pd.DataFrame]:
     )
     return events, standings, results
 
-def download_all(eids: Sequence[int]) -> Tuple[pd.DataFrame]:
+def _download_all(eids: Sequence[int]) -> Tuple[pd.DataFrame]:
     return tuple(
         pd.concat(list(t), ignore_index=True, sort=False)
         for t in zip(*[
-            download(eid)
+            _download(eid)
             for eid in eids
         ])
     )
@@ -124,10 +124,15 @@ def download_all(eids: Sequence[int]) -> Tuple[pd.DataFrame]:
 def format_standings(df: pd.DataFrame) -> pd.DataFrame:
     return (df
         .pipe(lambda x: x.set_axis(x.columns.to_flat_index().map('_'.join), axis='columns', inplace=False))
+        .rename(columns=lambda x: x.strip('_'))
         .rename(columns=lambda x: re.sub(r'(.+)_\1', r'\1', x))
         .rename(columns=lambda x: x.lower())
         .rename(columns=lambda x: x.replace('.', '_'))
         .rename(columns={'#': 'rank'})
+        .fillna({
+            'surname': '',
+            'prename': ''
+        })
         .astype(dtype={column: int             for column in ['rank', 'standings_score']})
         .astype(dtype={column: float           for column in ['rating_value', 'rating_change']})
         .astype(dtype={column: pd.Int64Dtype() for column in ['rating_value', 'rating_change']})
@@ -157,9 +162,7 @@ def format_results(df: pd.DataFrame) -> pd.DataFrame:
     )
 
 def main(max_eid: int) -> Tuple[pd.DataFrame]:
-    events, standings, results = download_all(range(1, 1 + max_eid))
-    standings = format_standings(standings)
-    results = format_results(results)
+    events, standings, results = _download_all(range(1, 1 + max_eid))
     kleier.utils._save_dataset(events, 'events')
     kleier.utils._save_dataset(standings, 'standings')
     kleier.utils._save_dataset(results, 'results')

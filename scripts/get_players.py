@@ -35,7 +35,7 @@ def _games(pid: int, table: bs4.element.Tag) -> pd.DataFrame:
         .pipe(lambda x: x.loc[:, x.columns.to_list()[-1:] + x.columns.to_list()[:-1]])
     )
 
-def download(pid: int) -> Tuple[pd.DataFrame]:
+def _download(pid: int) -> Tuple[pd.DataFrame]:
     assert 1 <= pid
     url = f'https://www.kleier.net/cgi/player.php?pid={pid}'
     response = requests.get(url)
@@ -51,11 +51,11 @@ def download(pid: int) -> Tuple[pd.DataFrame]:
     games = None if not table else _games(pid, table)
     return player, games
 
-def download_all(pids: Sequence[int]) -> Tuple[pd.DataFrame]:
+def _download_all(pids: Sequence[int]) -> Tuple[pd.DataFrame]:
     return tuple(
         pd.concat(list(t), ignore_index=True, sort=False)
         for t in zip(*[
-            download(pid)
+            _download(pid)
             for pid in pids
         ])
     )
@@ -67,13 +67,16 @@ def format_games(df: pd.DataFrame) -> pd.DataFrame:
         .rename(columns=lambda x: x.replace(u'\xa0\u2191', ''))
         .rename(columns=lambda x: x.replace(' ', '_'))
         .rename(columns=lambda x: x.lower())
+        .fillna({
+            'opponent_surname': '',
+            'opponent_prename': ''
+        })
         .astype(dtype={'event_date'     : 'datetime64[ns]'})
         .astype(dtype={'opponent_rating': pd.Int64Dtype()})
     )
 
 def main(max_pid: int) -> Tuple[pd.DataFrame]:
-    players, games = download_all(range(1, 1 + max_pid))
-    games = format_games(games)
+    players, games = _download_all(range(1, 1 + max_pid))
     kleier.utils._save_dataset(players, 'players')
     kleier.utils._save_dataset(games, 'games')
     return players, games
