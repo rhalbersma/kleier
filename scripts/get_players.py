@@ -5,6 +5,7 @@
 #    (See accompanying file LICENSE_1_0.txt or copy at
 #          http://www.boost.org/LICENSE_1_0.txt)
 
+import re
 import sys
 
 import bs4
@@ -67,12 +68,14 @@ def format_games(df: pd.DataFrame) -> pd.DataFrame:
         .rename(columns=lambda x: x.replace(u'\xa0\u2191', ''))
         .rename(columns=lambda x: x.replace(' ', '_'))
         .rename(columns=lambda x: x.lower())
+        .rename(columns={'pid': 'pid1'})
+        .rename(columns=lambda x: re.sub(r'opponent_(.+)', r'\g<1>2', x))
         .fillna({
-            'opponent_surname': '',
-            'opponent_prename': ''
+            'surname2': '',
+            'prename2': ''
         })
-        .astype(dtype={'event_date'     : 'datetime64[ns]'})
-        .astype(dtype={'opponent_rating': pd.Int64Dtype()})
+        .astype(dtype={'event_date': 'datetime64[ns]'})
+        .astype(dtype={'rating2'   : pd.Int64Dtype()})
     )
 
 def main(max_pid: int) -> Tuple[pd.DataFrame]:

@@ -143,7 +143,7 @@ def format_standings(df: pd.DataFrame) -> pd.DataFrame:
 def format_results(df: pd.DataFrame) -> pd.DataFrame:
     return (df
         .rename(columns={
-            '##'     : 'rank',
+            '##'     : 'rank1',
             'Results': 'result'
         })
         .fillna({'result': '0-'})
@@ -153,11 +153,11 @@ def format_results(df: pd.DataFrame) -> pd.DataFrame:
             regex=True
         )
         .assign(
-            opponent = lambda x: x.result.str.slice(0, -1),
-            result   = lambda x: x.result.str.slice(   -1)
+            rank2  = lambda x: x.result.str.slice(0, -1),
+            result = lambda x: x.result.str.slice(   -1)
         )
-        .loc[:, ['eid', 'gid', 'round', 'rank', 'opponent', 'result']]
-        .astype(dtype={column: int for column in ['rank', 'opponent']})
+        .loc[:, ['eid', 'gid', 'round', 'rank1', 'rank2', 'result']]
+        .astype(dtype={column: int for column in ['rank1', 'rank2']})
         .astype(dtype={'result': 'category'})
     )
 
