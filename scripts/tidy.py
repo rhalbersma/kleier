@@ -75,22 +75,24 @@ def merge_games_pinf(games: pd.DataFrame, players: pd.DataFrame) -> pd.DataFrame
     )
 
 def append_games_anonymous(games: pd.DataFrame) -> pd.DataFrame:
-    return (games.append(games
-        .query('surname2 == "" & prename2 == ""')
-        .loc[:, [
-            'event_place', 'event_date', 'event_significance',
-            'pid2', 'surname2', 'prename2', 'nationality2', 'rating2',
-            'pid1', 'surname1', 'prename1', 'nationality1', 'rating1',
-            'result_expected', 'result_observed', 'result_net_yield'
-        ]]
-        .rename(columns=lambda x: re.sub(r'(.+)1', r'\g<1>0', x))
-        .rename(columns=lambda x: re.sub(r'(.+)2', r'\g<1>1', x))
-        .rename(columns=lambda x: re.sub(r'(.+)0', r'\g<1>2', x))
-        .assign(
-            result_expected = lambda x: 1.0 - x.result_expected,
-            result_observed = lambda x: 1.0 - x.result_observed,
-            result_net_yield = lambda x: -x.result_net_yield
-        ))
+    return (games
+        .append(games
+            .query('surname2 == "" & prename2 == ""')
+            .loc[:, [
+                'event_place', 'event_date', 'event_significance',
+                'pid2', 'surname2', 'prename2', 'nationality2', 'rating2',
+                'pid1', 'surname1', 'prename1', 'nationality1', 'rating1',
+                'result_expected', 'result_observed', 'result_net_yield'
+            ]]
+            .rename(columns=lambda x: re.sub(r'(.+)1', r'\g<1>0', x))
+            .rename(columns=lambda x: re.sub(r'(.+)2', r'\g<1>1', x))
+            .rename(columns=lambda x: re.sub(r'(.+)0', r'\g<1>2', x))
+            .assign(
+                result_expected = lambda x: 1.0 - x.result_expected,
+                result_observed = lambda x: 1.0 - x.result_observed,
+                result_net_yield = lambda x: -x.result_net_yield
+            )
+        )
         .sort_values(
             by=['pid1', 'event_date', 'rating2'],
             ascending=[True, False, False]
