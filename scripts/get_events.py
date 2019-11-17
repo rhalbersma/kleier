@@ -128,16 +128,28 @@ def format_standings(df: pd.DataFrame) -> pd.DataFrame:
         .rename(columns=lambda x: re.sub(r'(.+)_\1', r'\1', x))
         .rename(columns=lambda x: x.lower())
         .rename(columns=lambda x: x.replace('.', '_'))
-        .rename(columns={'#': 'rank'})
+        .rename(columns={
+            '#': 'rank',
+            'rating_value'    : 'Rnew',
+            'rating_change'   : 'Rchg',
+            'rating_eff_games': 'Reff_games'
+        })
         .fillna({
             'surname': '',
             'prename': ''
         })
         .astype(dtype={column: int             for column in ['rank', 'standings_score']})
-        .astype(dtype={column: float           for column in ['rating_value', 'rating_change']})
-        .astype(dtype={column: pd.Int64Dtype() for column in ['rating_value', 'rating_change']})
-        .astype(dtype={column: float           for column in ['rating_eff_games', 'standings_buchholz', 'standings_median']})
+        .astype(dtype={column: float           for column in ['Rnew', 'Rchg']})
+        .astype(dtype={column: pd.Int64Dtype() for column in ['Rnew', 'Rchg']})
+        .astype(dtype={column: float           for column in ['Reff_games', 'standings_buchholz', 'standings_median']})
         .astype(dtype={'standings_compa': 'category'})
+        .assign(Rold = lambda x: x.Rnew - x.Rchg)
+        .loc[:, [
+            'eid', 'gid',
+            'rank', 'surname', 'prename', 'nationality',
+            'Rold', 'Rchg', 'Rnew', 'Reff_games',
+            'standings_score', 'standings_buchholz', 'standings_median', 'standings_compa'
+        ]]
     )
 
 def format_results(df: pd.DataFrame) -> pd.DataFrame:

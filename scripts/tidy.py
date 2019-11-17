@@ -43,18 +43,18 @@ def merge_players_pinf(players: pd.DataFrame, standings: pd.DataFrame, games: pd
         .append(pid_sur_pre_no_nat)
         .sort_values('pid')
     )
-    sur_pre_rating = (games
+    sur_pre_Rcur = (games
         .loc[:, games.columns.str.endswith('2')]
         .drop_duplicates()
         .rename(columns=lambda x: re.sub(r'(.*)2', r'\1', x))
     )
-    pid_sur_pre_nat_rating = (pid_sur_pre_nat
+    pid_sur_pre_nat_Rcur = (pid_sur_pre_nat
         .merge(
-            sur_pre_rating,
+            sur_pre_Rcur,
             how='outer', validate='one_to_one'
         )
     )
-    return pid_sur_pre_nat_rating
+    return pid_sur_pre_nat_Rcur
 
 def merge_games_pinf(games: pd.DataFrame, players: pd.DataFrame) -> pd.DataFrame:
     return (games
@@ -66,11 +66,12 @@ def merge_games_pinf(games: pd.DataFrame, players: pd.DataFrame) -> pd.DataFrame
             .rename(columns=lambda x: x + '2'),
             how='left', validate='many_to_one'
         )
+        .rename(columns=lambda x: re.sub(r'(rating)(\d)', r'\1_T\2', x))
         .loc[:, [
             'event_place', 'event_date', 'event_significance',
-            'pid1', 'surname1', 'prename1', 'nationality1', 'rating1',
-            'pid2', 'surname2', 'prename2', 'nationality2', 'rating2',
-            'result_expected', 'result_observed', 'result_net_yield'
+            'pid1', 'surname1', 'prename1', 'nationality1', 'Rcur1',
+            'pid2', 'surname2', 'prename2', 'nationality2', 'Rcur2',
+            'score', 'PDcur', 'dRcur'
         ]]
     )
 
@@ -80,21 +81,21 @@ def append_games_anonymous(games: pd.DataFrame) -> pd.DataFrame:
             .query('surname2 == "" & prename2 == ""')
             .loc[:, [
                 'event_place', 'event_date', 'event_significance',
-                'pid2', 'surname2', 'prename2', 'nationality2', 'rating2',
-                'pid1', 'surname1', 'prename1', 'nationality1', 'rating1',
-                'result_expected', 'result_observed', 'result_net_yield'
+                'pid2', 'surname2', 'prename2', 'nationality2', 'Rcur2',
+                'pid1', 'surname1', 'prename1', 'nationality1', 'Rcur1',
+                'score', 'PDcur', 'dRcur'
             ]]
             .rename(columns=lambda x: re.sub(r'(.+)1', r'\g<1>0', x))
             .rename(columns=lambda x: re.sub(r'(.+)2', r'\g<1>1', x))
             .rename(columns=lambda x: re.sub(r'(.+)0', r'\g<1>2', x))
             .assign(
-                result_expected = lambda x: 1.0 - x.result_expected,
-                result_observed = lambda x: 1.0 - x.result_observed,
-                result_net_yield = lambda x: -x.result_net_yield
+                score = lambda x: 1.0 - x.score,
+                PDcur = lambda x: 1.0 - x.PDcur,
+                dRcur = lambda x: -x.dRcur
             )
         )
         .sort_values(
-            by=['pid1', 'event_date', 'rating2'],
+            by=['pid1', 'event_date', 'Rcur2'],
             ascending=[True, False, False]
         )
         .reset_index(drop=True)
@@ -105,13 +106,13 @@ def merge_standings_einf_pinf(standings: pd.DataFrame, events: pd.DataFrame, pla
         .loc[:, ['eid', 'gid', 'place', 'date']]
         .merge(standings, how='left', validate='one_to_many')
         .merge(players
-            .drop(columns=['rating']),
+            .drop(columns=['Rcur']),
             how='left', validate='many_to_one'
         )
         .loc[:, [
             'eid', 'gid', 'place', 'date', 'rank',
             'pid', 'surname', 'prename', 'nationality',
-            'rating_value', 'rating_change', 'rating_eff_games',
+            'Rold', 'Rchg', 'Rnew', 'Reff_games',
             'standings_score', 'standings_buchholz', 'standings_median', 'standings_compa'
         ]]
     )
@@ -119,24 +120,21 @@ def merge_standings_einf_pinf(standings: pd.DataFrame, events: pd.DataFrame, pla
 def merge_results_einf_pinf(results: pd.DataFrame, events: pd.DataFrame, standings: pd.DataFrame) -> pd.DataFrame:
     return (events
         .loc[:, ['eid', 'gid', 'place', 'date']]
-        .merge(results, how='left', validate='one_to_many'
-        )
+        .merge(results, how='left', validate='one_to_many')
         .merge(standings
             .loc[:, [
                 'eid', 'gid', 'place', 'date',
-                'rank', 'pid', 'surname', 'prename', 'nationality', 'rating_value'
+                'rank', 'pid', 'surname', 'prename', 'nationality', 'Rold', 'Rnew'
             ]]
-            .rename(columns={'rating_value': 'rating'})
-            .rename(columns={x: x + '1' for x in ['rank', 'pid', 'surname', 'prename', 'nationality', 'rating']}),
+            .rename(columns={x: x + '1' for x in ['rank', 'pid', 'surname', 'prename', 'nationality', 'Rold', 'Rnew']}),
             how='left', validate='many_to_one'
         )
         .merge(standings
             .loc[:, [
                 'eid', 'gid', 'place', 'date',
-                'rank', 'pid', 'surname', 'prename', 'nationality', 'rating_value'
+                'rank', 'pid', 'surname', 'prename', 'nationality', 'Rold', 'Rnew'
             ]]
-            .rename(columns={'rating_value': 'rating'})
-            .rename(columns={x: x + '2' for x in ['rank', 'pid', 'surname', 'prename', 'nationality', 'rating']}),
+            .rename(columns={x: x + '2' for x in ['rank', 'pid', 'surname', 'prename', 'nationality', 'Rold', 'Rnew']}),
             how='outer', validate='many_to_one', indicator=True
         )
         .query('_merge != "right_only"')
@@ -146,8 +144,8 @@ def merge_results_einf_pinf(results: pd.DataFrame, events: pd.DataFrame, standin
         .astype(dtype={column: int for column in ['round', 'rank1', 'pid1', 'pid2']})
         .loc[:, [
             'eid', 'gid', 'place', 'date', 'round',
-            'rank1', 'pid1', 'surname1', 'prename1', 'nationality1', 'rating1',
-            'rank2', 'pid2', 'surname2', 'prename2', 'nationality2', 'rating2',
+            'rank1', 'pid1', 'surname1', 'prename1', 'nationality1', 'Rold1', 'Rnew1',
+            'rank2', 'pid2', 'surname2', 'prename2', 'nationality2', 'Rold2', 'Rnew2',
             'result'
         ]]
     )
