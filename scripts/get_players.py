@@ -68,27 +68,30 @@ def format_games(df: pd.DataFrame) -> pd.DataFrame:
         .rename(columns=lambda x: x.replace(u'\xa0\u2191', ''))
         .rename(columns=lambda x: x.replace(' ', '_'))
         .rename(columns=lambda x: x.lower())
-        .rename(columns=lambda x: re.sub(r'opponent_(.+)', r'\g<1>2', x))
+        .rename(columns=lambda x: re.sub(r'event_(.*)', r'\1', x))
+        .rename(columns=lambda x: re.sub(r'opponent_(.*)', r'\g<1>2', x))
+        .rename(columns=lambda x: re.sub(r'result_(.*)', r'\1', x))
+        .rename(columns=lambda x: re.sub(r'(.*)name(.*)', r'\1\2', x))
         .rename(columns={
-            'pid'             : 'pid1',
-            'rating2'         : 'Rcur2',
-            'result_expected' : 'PDcur',
-            'result_observed' : 'score',
-            'result_net_yield': 'dRcur'
+            'pid'      : 'pid1',
+            'rating2'  : 'R2',
+            'expected' : 'We',
+            'observed' : 'W',
+            'net_yield': 'dW'
         })
         .fillna({
-            'surname2': '',
-            'prename2': ''
+            'sur2': '',
+            'pre2': ''
         })
         .astype(dtype={
-            'event_date': 'datetime64[ns]',
-            'Rcur2': pd.Int64Dtype()
+            'date': 'datetime64[ns]',
+            'R2'  : pd.Int64Dtype()
         })
         .loc[:, [
             'pid1',
-            'event_place', 'event_date', 'event_significance',
-            'surname2', 'prename2',
-            'Rcur2', 'score', 'PDcur', 'dRcur'
+            'place', 'date', 'significance',
+            'sur2', 'pre2',
+            'R2', 'W', 'We', 'dW'
         ]]
     )
 

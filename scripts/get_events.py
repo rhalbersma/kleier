@@ -31,13 +31,13 @@ def _event(eid: int, gid: int, table_header_rows: bs4.element.ResultSet) -> pd.D
         .split('\xa0\xa0')
     )
     group = group.split(': ')[1][:-1]
-    W, D, L = [
+    pW, pD, pL = [
         int(points)
         for points in scoring.split(': ')[1].split()
     ]
     return pd.DataFrame(
-        data   =[(eid,   gid,   name,   place,   date,   group,   W,   D,   L)],
-        columns=['eid', 'gid', 'name', 'place', 'date', 'group', 'W', 'D', 'L']
+        data   =[(eid,   gid,   name,   place,   date,   group,   pW,   pD,   pL)],
+        columns=['eid', 'gid', 'name', 'place', 'date', 'group', 'pW', 'pD', 'pL']
     )
 
 def _file(eid: int, results_from: str) -> Tuple[str]:
@@ -128,27 +128,30 @@ def format_standings(df: pd.DataFrame) -> pd.DataFrame:
         .rename(columns=lambda x: re.sub(r'(.+)_\1', r'\1', x))
         .rename(columns=lambda x: x.lower())
         .rename(columns=lambda x: x.replace('.', '_'))
+        .rename(columns=lambda x: re.sub(r'(.*)name', r'\1', x))
+        .rename(columns=lambda x: re.sub(r'rating_(.*)', r'\1', x))
+        .rename(columns=lambda x: re.sub(r'standings_(.*)', r'\1', x))
         .rename(columns={
-            '#': 'rank',
-            'rating_value'    : 'Rnew',
-            'rating_change'   : 'Rchg',
-            'rating_eff_games': 'Reff_games'
+            '#'          : 'rank',
+            'nationality': 'natl',
+            'value'      : 'Rn',
+            'change'     : 'dR'
         })
         .fillna({
-            'surname': '',
-            'prename': ''
+            'sur': '',
+            'pre': ''
         })
-        .astype(dtype={column: int             for column in ['rank', 'standings_score']})
-        .astype(dtype={column: float           for column in ['Rnew', 'Rchg']})
-        .astype(dtype={column: pd.Int64Dtype() for column in ['Rnew', 'Rchg']})
-        .astype(dtype={column: float           for column in ['Reff_games', 'standings_buchholz', 'standings_median']})
-        .astype(dtype={'standings_compa': 'category'})
-        .assign(Rold = lambda x: x.Rnew - x.Rchg)
+        .astype(dtype={column: int             for column in ['rank', 'score']})
+        .astype(dtype={column: float           for column in ['Rn', 'dR']})
+        .astype(dtype={column: pd.Int64Dtype() for column in ['Rn', 'dR']})
+        .astype(dtype={column: float           for column in ['eff_games', 'buchholz', 'median']})
+        .astype(dtype={'compa': 'category'})
+        .assign(Ro = lambda x: x.Rn - x.dR)
         .loc[:, [
             'eid', 'gid',
-            'rank', 'surname', 'prename', 'nationality',
-            'Rold', 'Rchg', 'Rnew', 'Reff_games',
-            'standings_score', 'standings_buchholz', 'standings_median', 'standings_compa'
+            'rank', 'sur', 'pre', 'natl',
+            'Ro', 'dR', 'Rn', 'eff_games',
+            'score', 'buchholz', 'median', 'compa'
         ]]
     )
 
