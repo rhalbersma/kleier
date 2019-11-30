@@ -34,6 +34,11 @@ def _games(pid: int, table: bs4.element.Tag) -> pd.DataFrame:
             pid = pid
         )
         .pipe(lambda x: x.loc[:, x.columns.to_list()[-1:] + x.columns.to_list()[:-1]])
+        .assign(unplayed = pd.Series([
+            False if not td.has_attr('class') else td['class'][0] == 'unplayed'
+            for tr in table.find_all('tr')[3:]
+            for td in tr.find_all('td')[-1:]
+        ]))
     )
 
 def _download(pid: int) -> Tuple[pd.DataFrame]:
@@ -89,7 +94,7 @@ def format_games(df: pd.DataFrame) -> pd.DataFrame:
         })
         .loc[:, [
             'pid1',
-            'place', 'date', 'significance',
+            'place', 'date', 'significance', 'unplayed',
             'sur2', 'pre2',
             'R2', 'W', 'We', 'dW'
         ]]

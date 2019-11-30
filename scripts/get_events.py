@@ -53,14 +53,28 @@ def _tourn_table(eid: int, gid: int, table: bs4.element.Tag) -> pd.DataFrame:
         .pipe(lambda x: x.loc[:, x.columns.to_list()[-2:] + x.columns.to_list()[:-2]])
     )
 
+def _unplayed(N: int, R: int, table: bs4.element.Tag) -> pd.DataFrame:
+    return pd.DataFrame(
+        data = [[
+                False if not td.has_attr('class') else td['class'][0] == 'unplayed'
+                for td in tr.find_all('td')[-R:]
+            ]
+            for tr in table.find_all('tr')[4:4+N]
+        ],
+        columns = pd.MultiIndex.from_tuples([
+            ('unplayed', str(r + 1))
+            for r in range(R)
+        ])
+    )
+
 def _standings(tourn_table: pd.DataFrame) -> pd.DataFrame:
     return tourn_table.drop(list(tourn_table.filter(regex='Results')), axis='columns')
 
 def _results(tourn_table: pd.DataFrame) -> pd.DataFrame:
     return (pd.wide_to_long(tourn_table
-                .filter(regex='eid|gid|#|Results')
+                .filter(regex='eid|gid|#|Results|unplayed')
                 .pipe(lambda x: x.set_axis(x.columns.to_flat_index().map(''.join), axis='columns', inplace=False)),
-            ['Results'], i='##', j='round'
+            ['Results', 'unplayed'], i='##', j='round'
         )
         .reset_index()
     )
@@ -74,6 +88,8 @@ def _event_group_table(eid: int, gid: int, table: bs4.element.Tag) -> Tuple[pd.D
         file_from, file_date, file_name = _file(eid, results_from.split(sep)[1])
     else:
         file_from = file_date = file_name = ''
+    N, R = tourn_table.filter(regex='Results').shape
+    tourn_table = tourn_table.join(_unplayed(N, R, table))
     event = (_event(eid, gid, table.find('thead').find_all('tr'))
         .assign(
             file_from = file_from,
@@ -171,7 +187,7 @@ def format_results(df: pd.DataFrame) -> pd.DataFrame:
             rank2  = lambda x: x.result.str.slice(0, -1),
             result = lambda x: x.result.str.slice(   -1)
         )
-        .loc[:, ['eid', 'gid', 'round', 'rank1', 'rank2', 'result']]
+        .loc[:, ['eid', 'gid', 'round', 'unplayed', 'rank1', 'rank2', 'result']]
         .astype(dtype={column: int for column in ['rank1', 'rank2']})
         .astype(dtype={'result': 'category'})
     )
