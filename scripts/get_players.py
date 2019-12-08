@@ -94,7 +94,7 @@ def format_games(df: pd.DataFrame) -> pd.DataFrame:
         })
         .loc[:, [
             'pid1',
-            'place', 'date', 'significance', 'unplayed',
+            'date', 'place', 'significance', 'unplayed',
             'sur2', 'pre2',
             'R2', 'W', 'We', 'dW'
         ]]

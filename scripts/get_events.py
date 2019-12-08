@@ -53,17 +53,17 @@ def _tourn_table(eid: int, gid: int, table: bs4.element.Tag) -> pd.DataFrame:
         .pipe(lambda x: x.loc[:, x.columns.to_list()[-2:] + x.columns.to_list()[:-2]])
     )
 
-def _unplayed(N: int, R: int, table: bs4.element.Tag) -> pd.DataFrame:
+def _unplayed(M: int, N: int, table: bs4.element.Tag) -> pd.DataFrame:
     return pd.DataFrame(
         data = [[
                 False if not td.has_attr('class') else td['class'][0] == 'unplayed'
-                for td in tr.find_all('td')[-R:]
+                for td in tr.find_all('td')[-N:]
             ]
-            for tr in table.find_all('tr')[4:4+N]
+            for tr in table.find_all('tr')[4:4+M]
         ],
         columns = pd.MultiIndex.from_tuples([
-            ('unplayed', str(r + 1))
-            for r in range(R)
+            ('unplayed', str(n + 1))
+            for n in range(N)
         ])
     )
 
@@ -88,10 +88,12 @@ def _event_group_table(eid: int, gid: int, table: bs4.element.Tag) -> Tuple[pd.D
         file_from, file_date, file_name = _file(eid, results_from.split(sep)[1])
     else:
         file_from = file_date = file_name = ''
-    N, R = tourn_table.filter(regex='Results').shape
-    tourn_table = tourn_table.join(_unplayed(N, R, table))
+    M, N = tourn_table.filter(regex='Results').shape
+    tourn_table = tourn_table.join(_unplayed(M, N, table))
     event = (_event(eid, gid, table.find('thead').find_all('tr'))
         .assign(
+            M = M,
+            N = N,
             file_from = file_from,
             file_date = file_date,
             file_name = file_name
@@ -100,6 +102,23 @@ def _event_group_table(eid: int, gid: int, table: bs4.element.Tag) -> Tuple[pd.D
     standings = _standings(tourn_table)
     results = _results(tourn_table)
     return event, standings, results
+
+def _download_enat() -> pd.DataFrame:
+    url = 'https://www.kleier.net/tournaments/byplace/index.php'
+    response = requests.get(url)
+    assert response.status_code == 200
+    soup = bs4.BeautifulSoup(response.content, 'lxml')
+    return (pd.DataFrame(
+        data = [
+            (int(eid.get('href').split('=')[1]), enat.find('span').text)
+            for enat in soup.find('ul', {'class': 'nat'}).find_all('li', recursive = False)
+            for eid in enat.find_all('a')
+        ],
+        columns = [ 'eid', 'enat' ]
+        )
+        .sort_values('eid')
+        .reset_index(drop=True)
+    )
 
 def _download(eid: int) -> Tuple[pd.DataFrame]:
     assert 1 <= eid
@@ -137,6 +156,15 @@ def _download_all(eids: Sequence[int]) -> Tuple[pd.DataFrame]:
         ])
     )
 
+def format_events(df: pd.DataFrame) -> pd.DataFrame:
+    return (df
+        .loc[:, [
+            'eid', 'gid', 'date', 'place', 'enat',
+            'pW', 'pD', 'pL', 'M', 'N',
+            'group', 'name', 'file_from', 'file_date', 'file_name', 'remarks'
+        ]]
+    )
+
 def format_standings(df: pd.DataFrame) -> pd.DataFrame:
     return (df
         .pipe(lambda x: x.set_axis(x.columns.to_flat_index().map('_'.join), axis='columns', inplace=False))
@@ -149,7 +177,7 @@ def format_standings(df: pd.DataFrame) -> pd.DataFrame:
         .rename(columns=lambda x: re.sub(r'standings_(.*)', r'\1', x))
         .rename(columns={
             '#'          : 'rank',
-            'nationality': 'natl',
+            'nationality': 'pnat',
             'value'      : 'Rn',
             'change'     : 'dR'
         })
@@ -165,7 +193,7 @@ def format_standings(df: pd.DataFrame) -> pd.DataFrame:
         .assign(Ro = lambda x: x.Rn - x.dR)
         .loc[:, [
             'eid', 'gid',
-            'rank', 'sur', 'pre', 'natl',
+            'rank', 'sur', 'pre', 'pnat',
             'Ro', 'dR', 'Rn', 'eff_games',
             'score', 'buchholz', 'median', 'compa'
         ]]
@@ -194,6 +222,7 @@ def format_results(df: pd.DataFrame) -> pd.DataFrame:
 
 def main(max_eid: int) -> Tuple[pd.DataFrame]:
     events, standings, results = _download_all(range(1, 1 + max_eid))
+    events = pd.merge(events, _download_enat(), validate='many_to_one')
     kleier.utils._save_dataset(events, 'events')
     kleier.utils._save_dataset(standings, 'standings')
     kleier.utils._save_dataset(results, 'results')

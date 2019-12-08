@@ -15,27 +15,28 @@ import kleier.utils
 
 import get_events
 import get_players
+import get_ratings
 
 def merge_players_pinf(players: pd.DataFrame, standings: pd.DataFrame, games: pd.DataFrame) -> pd.DataFrame:
-    pid_sur_pre_natl = (players
+    pid_sur_pre_pnat = (players
         .merge(standings
-            .loc[:, ['sur', 'pre', 'natl']]
+            .loc[:, ['sur', 'pre', 'pnat']]
             .drop_duplicates()
             .assign(name = lambda x: x.pre + ' ' + x.sur)
             .assign(name = lambda x: x.name.str.strip()),
             how='outer', indicator=True, validate='one_to_one'
         )
     )
-    return (pid_sur_pre_natl
+    return (pid_sur_pre_pnat
         .query('_merge == "both"')
         .drop(columns=['name', '_merge'])
-        .append(pid_sur_pre_natl
+        .append(pid_sur_pre_pnat
             .query('_merge != "both"')
             .assign(
                 sur = lambda x: x.name.str.split(expand=True)[1],
                 pre = lambda x: x.name.str.split(expand=True)[0]
             )
-            .fillna({'natl': ''})
+            .fillna({'pnat': ''})
             .drop(columns=['name', '_merge'])
         )
         .sort_values('pid')
@@ -58,9 +59,9 @@ def merge_games_pinf(games: pd.DataFrame, players: pd.DataFrame) -> pd.DataFrame
             how='left', validate='many_to_one'
         )
         .loc[:, [
-            'place', 'date', 'significance', 'unplayed',
-            'pid1', 'sur1', 'pre1', 'natl1', 'R1',
-            'pid2', 'sur2', 'pre2', 'natl2', 'R2',
+            'date', 'place', 'significance', 'unplayed',
+            'pid1', 'sur1', 'pre1', 'pnat1', 'R1',
+            'pid2', 'sur2', 'pre2', 'pnat2', 'R2',
             'W', 'We', 'dW'
         ]]
     )
@@ -70,9 +71,9 @@ def append_games_anonymous(games: pd.DataFrame) -> pd.DataFrame:
         .append(games
             .query('sur2 == "" & pre2 == ""')
             .loc[:, [
-                'place', 'date', 'significance', 'unplayed',
-                'pid2', 'sur2', 'pre2', 'natl2', 'R2',
-                'pid1', 'sur1', 'pre1', 'natl1', 'R1',
+                'date', 'place', 'significance', 'unplayed',
+                'pid2', 'sur2', 'pre2', 'pnat2', 'R2',
+                'pid1', 'sur1', 'pre1', 'pnat1', 'R1',
                 'W', 'We', 'dW'
             ]]
             .rename(columns=lambda x: re.sub(r'(.+)1', r'\g<1>0', x))
@@ -93,15 +94,15 @@ def append_games_anonymous(games: pd.DataFrame) -> pd.DataFrame:
 
 def merge_standings_einf_pinf(standings: pd.DataFrame, events: pd.DataFrame, players: pd.DataFrame) -> pd.DataFrame:
     return (events
-        .loc[:, ['eid', 'gid', 'place', 'date']]
+        .loc[:, ['eid', 'gid', 'date', 'place', 'enat']]
         .merge(standings, how='left', validate='one_to_many')
         .merge(players
             .drop(columns=['R']),
             how='left', validate='many_to_one'
         )
         .loc[:, [
-            'eid', 'gid', 'place', 'date', 'rank',
-            'pid', 'sur', 'pre', 'natl',
+            'eid', 'gid', 'date', 'place', 'enat',
+            'rank', 'pid', 'sur', 'pre', 'pnat',
             'Ro', 'dR', 'Rn', 'eff_games',
             'score', 'buchholz', 'median', 'compa'
         ]]
@@ -109,22 +110,24 @@ def merge_standings_einf_pinf(standings: pd.DataFrame, events: pd.DataFrame, pla
 
 def merge_results_einf_pinf(results: pd.DataFrame, events: pd.DataFrame, standings: pd.DataFrame) -> pd.DataFrame:
     return (events
-        .loc[:, ['eid', 'gid', 'place', 'date']]
+        .loc[:, ['eid', 'gid', 'date', 'place', 'enat']]
         .merge(results, how='left', validate='one_to_many')
         .merge(standings
             .loc[:, [
-                'eid', 'gid', 'place', 'date',
-                'rank', 'pid', 'sur', 'pre', 'natl', 'Ro', 'Rn'
+                'eid', 'gid', 'date', 'place', 'enat',
+                'rank', 'pid', 'sur', 'pre', 'pnat',
+                'Ro', 'Rn'
             ]]
-            .rename(columns={x: x + '1' for x in ['rank', 'pid', 'sur', 'pre', 'natl', 'Ro', 'Rn']}),
+            .rename(columns={x: x + '1' for x in ['rank', 'pid', 'sur', 'pre', 'pnat', 'Ro', 'Rn']}),
             how='left', validate='many_to_one'
         )
         .merge(standings
             .loc[:, [
-                'eid', 'gid', 'place', 'date',
-                'rank', 'pid', 'sur', 'pre', 'natl', 'Ro', 'Rn'
+                'eid', 'gid', 'date', 'place', 'enat',
+                'rank', 'pid', 'sur', 'pre', 'pnat',
+                'Ro', 'Rn'
             ]]
-            .rename(columns={x: x + '2' for x in ['rank', 'pid', 'sur', 'pre', 'natl', 'Ro', 'Rn']}),
+            .rename(columns={x: x + '2' for x in ['rank', 'pid', 'sur', 'pre', 'pnat', 'Ro', 'Rn']}),
             how='outer', validate='many_to_one', indicator=True
         )
         .query('_merge != "right_only"')
@@ -134,9 +137,9 @@ def merge_results_einf_pinf(results: pd.DataFrame, events: pd.DataFrame, standin
         .fillna({'pid2': 0})
         .astype(dtype={column: int for column in ['round', 'rank1', 'pid1', 'pid2']})
         .loc[:, [
-            'eid', 'gid', 'place', 'date', 'round', 'unplayed',
-            'rank1', 'pid1', 'sur1', 'pre1', 'natl1', 'Ro1', 'Rn1',
-            'rank2', 'pid2', 'sur2', 'pre2', 'natl2', 'Ro2', 'Rn2',
+            'eid', 'gid', 'date', 'place', 'enat', 'round', 'unplayed',
+            'rank1', 'pid1', 'sur1', 'pre1', 'pnat1', 'Ro1', 'Rn1',
+            'rank2', 'pid2', 'sur2', 'pre2', 'pnat2', 'Ro2', 'Rn2',
             'result'
         ]]
     )
@@ -144,20 +147,20 @@ def merge_results_einf_pinf(results: pd.DataFrame, events: pd.DataFrame, standin
 def merge_results_games(results: pd.DataFrame, games: pd.DataFrame) -> pd.DataFrame:
     return (results
         .merge(games
-            .loc[:, ['place', 'date', 'significance']]
-            .drop_duplicates(['place', 'date'])
+            .loc[:, ['date', 'place', 'significance']]
+            .drop_duplicates(['date', 'place'])
         )
         .rename(columns={'result': 'W'})
         .replace({'W': {'+': 1.0, '=': 0.5, '-': 0.0}})
         .merge(games
-            .loc[:, ['place', 'date', 'unplayed', 'pid1', 'R1', 'pid2', 'R2', 'W', 'We', 'dW']]
+            .loc[:, ['date', 'place', 'unplayed', 'pid1', 'R1', 'pid2', 'R2', 'W', 'We', 'dW']]
             .drop_duplicates(),
             how='outer', validate='many_to_many', indicator=True
         )
         .loc[:, [
-            'eid', 'gid', 'place', 'date', 'significance', 'unplayed', 'round',
-            'rank1', 'pid1', 'sur1', 'pre1', 'natl1', 'R1', 'Ro1', 'Rn1',
-            'rank2', 'pid2', 'sur2', 'pre2', 'natl2', 'R2', 'Ro2', 'Rn2',
+            'eid', 'gid', 'date', 'place', 'enat', 'significance', 'unplayed', 'round',
+            'rank1', 'pid1', 'sur1', 'pre1', 'pnat1', 'R1', 'Ro1', 'Rn1',
+            'rank2', 'pid2', 'sur2', 'pre2', 'pnat2', 'R2', 'Ro2', 'Rn2',
             'W', 'We', 'dW', '_merge'
         ]]
     )
@@ -268,14 +271,17 @@ def event_cross_ratings(event_cross: pd.DataFrame) -> pd.DataFrame:
 
 def main():
     # Complete Kleier archive as of 2019-11-16
-    # get_events.main(667)
-    # get_players.main(2965)
+    max_eid, max_pid = 667, 2965
+    # get_events.main(max_eid)
+    # get_players.main(max_pid)
+    # get_ratings.main(max_eid, max_pid)
 
-    events      = kleier.load_dataset('events')
+    events      = kleier.load_dataset('events').pipe(get_events.format_events)
     standings   = kleier.load_dataset('standings').pipe(get_events.format_standings)
     results     = kleier.load_dataset('results').pipe(get_events.format_results)
     players     = kleier.load_dataset('players')
     games       = kleier.load_dataset('games').pipe(get_players.format_games)
+    ratings     = kleier.load_dataset('ratings').pipe(lambda x: get_ratings.format_ratings(x, max_eid))
 
     players     = merge_players_pinf(players, standings, games)
     games       = merge_games_pinf(games, players)
