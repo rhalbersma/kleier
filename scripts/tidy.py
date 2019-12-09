@@ -17,6 +17,30 @@ import get_events
 import get_players
 import get_ratings
 
+def add_events_format(events: pd.DataFrame) -> pd.DataFrame:
+    return (events
+        .assign(format = lambda x:
+            np.where(
+                x.N == x.M - 1 + x.M % 2,
+                'RR1',
+                np.where(
+                    x.N == 2 * (x.M - 1 + x.M % 2),
+                    'RR2',
+                    np.where(
+                        x.N >= x.M,
+                        'RRX',
+                        'SS'
+                    )
+                )
+            )
+        )
+        .loc[:, [
+            'eid', 'gid', 'date', 'place', 'enat',
+            'pW', 'pD', 'pL', 'M', 'N', 'format',
+            'group', 'name', 'file_from', 'file_date', 'file_name', 'remarks'
+        ]]
+    )
+
 def merge_players_pinf(players: pd.DataFrame, standings: pd.DataFrame, games: pd.DataFrame) -> pd.DataFrame:
     pid_sur_pre_pnat = (players
         .merge(standings
@@ -59,10 +83,10 @@ def merge_games_pinf(games: pd.DataFrame, players: pd.DataFrame) -> pd.DataFrame
             how='left', validate='many_to_one'
         )
         .loc[:, [
-            'date', 'place', 'significance', 'unplayed',
+            'date', 'place', 'unplayed',
             'pid1', 'sur1', 'pre1', 'pnat1', 'R1',
             'pid2', 'sur2', 'pre2', 'pnat2', 'R2',
-            'W', 'We', 'dW'
+            'significance', 'W', 'We', 'dW'
         ]]
     )
 
@@ -71,10 +95,10 @@ def append_games_anonymous(games: pd.DataFrame) -> pd.DataFrame:
         .append(games
             .query('sur2 == "" & pre2 == ""')
             .loc[:, [
-                'date', 'place', 'significance', 'unplayed',
+                'date', 'place', 'unplayed',
                 'pid2', 'sur2', 'pre2', 'pnat2', 'R2',
                 'pid1', 'sur1', 'pre1', 'pnat1', 'R1',
-                'W', 'We', 'dW'
+                'significance', 'W', 'We', 'dW'
             ]]
             .rename(columns=lambda x: re.sub(r'(.+)1', r'\g<1>0', x))
             .rename(columns=lambda x: re.sub(r'(.+)2', r'\g<1>1', x))
@@ -283,6 +307,7 @@ def main():
     games       = kleier.load_dataset('games').pipe(get_players.format_games)
     ratings     = kleier.load_dataset('ratings').pipe(lambda x: get_ratings.format_ratings(x, max_eid))
 
+    events      = add_events_format(events)
     players     = merge_players_pinf(players, standings, games)
     games       = merge_games_pinf(games, players)
     games       = append_games_anonymous(games)
