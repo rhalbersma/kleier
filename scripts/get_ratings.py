@@ -19,20 +19,46 @@ def _download(max_eid: int, max_pid: int) -> pd.DataFrame:
     min, max = -9999, 9999
     from_, till = 'A', '['
     games = 0
-    tourn = max_eid
+    ntourn = max_eid
     items = max_pid * max_eid
     sortby = 'r'
     colsel, nat = 0, 'all'
 
-    url = f'https://www.kleier.net/cgi/rat_table.php?min={min}&max={max}&from={from_}&till={till}&games={games}&ntourn={tourn}&items={items}&sortby={sortby}&colsel={colsel}&nat[]={nat}'
+    url = f'https://www.kleier.net/cgi/rat_table.php?min={min}&max={max}&from={from_}&till={till}&games={games}&ntourn={ntourn}&items={items}&sortby={sortby}&colsel={colsel}&nat[]={nat}'
     response = requests.get(url)
     assert response.status_code == 200
     soup = bs4.BeautifulSoup(response.content, 'lxml')
     table = soup.find('table')
     return pd.read_html(str(table))[0]
 
+def _significance(dates: pd.Series) -> pd.Series:
+    max_dates = dates.max()
+    decay = 2.5731
+    tropical_year = 365.246
+    return np.round(np.exp(-((max_dates - dates).dt.days / (decay * tropical_year))**2), 6)
+
 def format_ratings(df: pd.DataFrame, max_eid: int) -> pd.DataFrame:
-    tourn = df.shape[1] - 6
+    rating_lists = (ratings
+        .filter(regex='Rating')
+        .columns
+        .to_frame()
+        .reset_index(drop=True)
+        .drop(columns=[0])
+        .rename(columns={
+            1: 'place',
+            2: 'date',
+            3: 'significance'
+        })
+        .astype(dtype={
+            'date'        : 'datetime64[ns]',
+            'significance': float
+        })
+        .merge(events, validate='one_to_one')
+        .loc[:, ['eid', 'date', 'place', 'nat', 'significance']]
+    )
+    assert rating_lists.equals(rating_lists.sort_values('eid', ascending=False))
+    assert np.isclose(_significance(rating_lists['date']), rating_lists['significance'], rtol=1e-4).all()
+    ntourn = df.shape[1] - 6
     return (df
         .pipe(lambda x:
             x.set_axis(x
@@ -50,7 +76,7 @@ def format_ratings(df: pd.DataFrame, max_eid: int) -> pd.DataFrame:
         .rename(columns=lambda x: re.sub(r'(.*)name', r'\1', x))
         .pipe(lambda x: x.rename(columns = {
                 x.columns[6 + (max_eid - eid)] : 'R' + str(eid)
-                for eid in reversed(range(1 + max_eid - tourn, 1 + max_eid))
+                for eid in reversed(range(1 + max_eid - ntourn, 1 + max_eid))
             })
         )
         .assign(pnat = lambda x: x.ranking_natl.str.split('/').str[-1])

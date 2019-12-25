@@ -15,13 +15,13 @@ from typing import Sequence, Tuple
 
 import kleier.utils
 
-def _event(eid: int, gid: int, table_header_rows: bs4.element.ResultSet) -> pd.DataFrame:
+def _event_group(eid: int, gid: int, table_header_rows: bs4.element.ResultSet) -> pd.DataFrame:
     name_place_date = (table_header_rows[0]
         .find('th')
         .text
         .split('\xa0\xa0\xa0\xa0\xa0\xa0')
     )
-    name, place_date = ('', name_place_date[0]) if len(name_place_date) == 1 else name_place_date
+    name, place_date = (None, name_place_date[0]) if len(name_place_date) == 1 else name_place_date
     place_and_date = place_date.split()
     place = ' '.join(place_and_date[:-1])
     date = pd.to_datetime(place_and_date[-1])
@@ -62,19 +62,19 @@ def _unplayed(M: int, N: int, table: bs4.element.Tag) -> pd.DataFrame:
             for tr in table.find_all('tr')[4:4+M]
         ],
         columns = pd.MultiIndex.from_tuples([
-            ('unplayed', str(n + 1))
+            ('Unplayed', str(n + 1))
             for n in range(N)
         ])
     )
 
 def _standings(tourn_table: pd.DataFrame) -> pd.DataFrame:
-    return tourn_table.drop(list(tourn_table.filter(regex='Results')), axis='columns')
+    return tourn_table.drop(list(tourn_table.filter(regex='Results|Unplayed')), axis='columns')
 
 def _results(tourn_table: pd.DataFrame) -> pd.DataFrame:
     return (pd.wide_to_long(tourn_table
-                .filter(regex='eid|gid|#|Results|unplayed')
+                .filter(regex='eid|gid|#|Results|Unplayed')
                 .pipe(lambda x: x.set_axis(x.columns.to_flat_index().map(''.join), axis='columns', inplace=False)),
-            ['Results', 'unplayed'], i='##', j='round'
+            ['Results', 'Unplayed'], i='##', j='round'
         )
         .reset_index()
     )
@@ -87,10 +87,10 @@ def _event_group_table(eid: int, gid: int, table: bs4.element.Tag) -> Tuple[pd.D
         tourn_table.drop(last_row.index, inplace=True)
         file_from, file_date, file_name = _file(eid, results_from.split(sep)[1])
     else:
-        file_from = file_date = file_name = ''
+        file_from = file_date = file_name = None
     M, N = tourn_table.filter(regex='Results').shape
     tourn_table = tourn_table.join(_unplayed(M, N, table))
-    event = (_event(eid, gid, table.find('thead').find_all('tr'))
+    event_group = (_event_group(eid, gid, table.find('thead').find_all('tr'))
         .assign(
             M = M,
             N = N,
@@ -101,24 +101,7 @@ def _event_group_table(eid: int, gid: int, table: bs4.element.Tag) -> Tuple[pd.D
     )
     standings = _standings(tourn_table)
     results = _results(tourn_table)
-    return event, standings, results
-
-def _download_enat() -> pd.DataFrame:
-    url = 'https://www.kleier.net/tournaments/byplace/index.php'
-    response = requests.get(url)
-    assert response.status_code == 200
-    soup = bs4.BeautifulSoup(response.content, 'lxml')
-    return (pd.DataFrame(
-        data = [
-            (int(eid.get('href').split('=')[1]), enat.find('span').text)
-            for enat in soup.find('ul', {'class': 'nat'}).find_all('li', recursive = False)
-            for eid in enat.find_all('a')
-        ],
-        columns = [ 'eid', 'enat' ]
-        )
-        .sort_values('eid')
-        .reset_index(drop=True)
-    )
+    return event_group, standings, results
 
 def _download(eid: int) -> Tuple[pd.DataFrame]:
     assert 1 <= eid
@@ -127,13 +110,6 @@ def _download(eid: int) -> Tuple[pd.DataFrame]:
     assert response.status_code == 200
     soup = bs4.BeautifulSoup(response.content, 'lxml')
     tables = soup.find_all('table', {'summary': 'Stratego Tournament Cross-Table'})
-    events, standings, results = tuple(
-        pd.concat(list(t), ignore_index=True, sort=False)
-        for t in zip(*[
-            _event_group_table(eid, gid, table)
-            for gid, table in enumerate(tables)
-        ])
-    )
     remarks = pd.DataFrame(
         data=[
             (tables.index(remarks.find_previous('table')), remarks.text)
@@ -141,11 +117,23 @@ def _download(eid: int) -> Tuple[pd.DataFrame]:
         ],
         columns=['gid', 'remarks']
     )
-    events = (pd
-        .merge(events, remarks, how='outer')
-        .fillna({'remarks': ''})
+    event_groups, standings, results = tuple(
+        pd.concat(list(t), ignore_index=True, sort=False)
+        for t in zip(*[
+            _event_group_table(eid, gid, table)
+            for gid, table in enumerate(tables)
+        ])
     )
-    return events, standings, results
+    event = (event_groups
+        .loc[:, ['eid', 'place', 'date']]
+        .drop_duplicates()
+    )
+    assert len(event.index) == 1
+    groups = (event_groups
+        .drop(columns=['place', 'date'])
+        .merge(remarks, validate='one_to_one')
+    )
+    return event, groups, standings, results
 
 def _download_all(eids: Sequence[int]) -> Tuple[pd.DataFrame]:
     return tuple(
@@ -156,12 +144,34 @@ def _download_all(eids: Sequence[int]) -> Tuple[pd.DataFrame]:
         ])
     )
 
+def _download_nats() -> pd.DataFrame:
+    url = 'https://www.kleier.net/tournaments/byplace/index.php'
+    response = requests.get(url)
+    assert response.status_code == 200
+    soup = bs4.BeautifulSoup(response.content, 'lxml')
+    return (pd
+        .DataFrame(
+            data=[
+                (int(eid.get('href').split('=')[1]), nat.find('span').text)
+                for nat in soup.find('ul', {'class': 'nat'}).find_all('li', recursive = False)
+                for eid in nat.find_all('a')
+            ],
+            columns=['eid', 'nat']
+        )
+        .sort_values('eid')
+        .reset_index(drop=True)
+    )
+
 def format_events(df: pd.DataFrame) -> pd.DataFrame:
+    return df.loc[:, ['eid', 'date', 'place', 'nat']]
+
+def format_groups(df: pd.DataFrame) -> pd.DataFrame:
     return (df
         .loc[:, [
-            'eid', 'gid', 'date', 'place', 'enat',
+            'eid', 'gid',
+            'name', 'group',
             'pW', 'pD', 'pL', 'M', 'N',
-            'group', 'name', 'file_from', 'file_date', 'file_name', 'remarks'
+            'file_date', 'file_name', 'file_from', 'remarks'
         ]]
     )
 
@@ -177,13 +187,9 @@ def format_standings(df: pd.DataFrame) -> pd.DataFrame:
         .rename(columns=lambda x: re.sub(r'standings_(.*)', r'\1', x))
         .rename(columns={
             '#'          : 'rank',
-            'nationality': 'pnat',
+            'nationality': 'nat',
             'value'      : 'Rn',
             'change'     : 'dR'
-        })
-        .fillna({
-            'sur': '',
-            'pre': ''
         })
         .astype(dtype={column: int             for column in ['rank', 'score']})
         .astype(dtype={column: float           for column in ['Rn', 'dR']})
@@ -192,18 +198,20 @@ def format_standings(df: pd.DataFrame) -> pd.DataFrame:
         .astype(dtype={'compa': 'category'})
         .assign(Ro = lambda x: x.Rn - x.dR)
         .loc[:, [
-            'eid', 'gid',
-            'rank', 'sur', 'pre', 'pnat',
-            'Ro', 'dR', 'Rn', 'eff_games',
-            'score', 'buchholz', 'median', 'compa'
+            'eid', 'gid', 'sur', 'pre', 'nat',
+            'score', 'buchholz', 'median', 'compa',
+            'rank', 
+            'eff_games',
+            'Ro', 'dR', 'Rn'
         ]]
     )
 
 def format_results(df: pd.DataFrame) -> pd.DataFrame:
     return (df
+        .rename(columns=lambda x: x.lower())
         .rename(columns={
             '##'     : 'rank1',
-            'Results': 'result'
+            'results': 'result'
         })
         .fillna({'result': '0-'})
         .replace(
@@ -215,18 +223,24 @@ def format_results(df: pd.DataFrame) -> pd.DataFrame:
             rank2  = lambda x: x.result.str.slice(0, -1),
             result = lambda x: x.result.str.slice(   -1)
         )
-        .loc[:, ['eid', 'gid', 'round', 'unplayed', 'rank1', 'rank2', 'result']]
+        .loc[:, [
+            'eid', 'gid', 'round', 'rank1', 'rank2',
+            'result', 'unplayed'
+        ]]
         .astype(dtype={column: int for column in ['rank1', 'rank2']})
         .astype(dtype={'result': 'category'})
     )
 
 def main(max_eid: int) -> Tuple[pd.DataFrame]:
-    events, standings, results = _download_all(range(1, 1 + max_eid))
-    events = pd.merge(events, _download_enat(), validate='many_to_one')
+    events, groups, standings, results = _download_all(range(1, 1 + max_eid))
+    assert events.equals(events.sort_values(['date', 'eid']))
+    nats = _download_nats()
+    events = pd.merge(events, nats, validate='one_to_one')
     kleier.utils._save_dataset(events, 'events')
+    kleier.utils._save_dataset(groups, 'groups')
     kleier.utils._save_dataset(standings, 'standings')
     kleier.utils._save_dataset(results, 'results')
-    return events, standings, results
+    return events, groups, standings, results
 
 if __name__ == '__main__':
     sys.exit(main(int(sys.argv[1])))

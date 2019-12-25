@@ -8,3 +8,4 @@ dist/
 scripts/__pycache__
 src/*.egg-info
 src/kleier/__pycache__
+typescript

@@ -9,6 +9,7 @@ import re
 import sys
 
 import bs4
+import numpy as np
 import pandas as pd
 import requests
 from typing import Sequence, Tuple
@@ -34,8 +35,8 @@ def _games(pid: int, table: bs4.element.Tag) -> pd.DataFrame:
             pid = pid
         )
         .pipe(lambda x: x.loc[:, x.columns.to_list()[-1:] + x.columns.to_list()[:-1]])
-        .assign(unplayed = pd.Series([
-            False if not td.has_attr('class') else td['class'][0] == 'unplayed'
+        .assign(Unplayed = pd.Series([
+            np.nan if not td.has_attr('class') else td['class'][0] == 'unplayed'
             for tr in table.find_all('tr')[3:]
             for td in tr.find_all('td')[-1:]
         ]))
@@ -50,7 +51,7 @@ def _download(pid: int) -> Tuple[pd.DataFrame]:
     header = soup.find('h1')
     table = soup.find('table')
     assert header or not table
-    name = '' if not header else _header_name(header)
+    name = None if not header else _header_name(header)
     if table:
         assert name == _table_name(table)
     player = _player(pid, name)
@@ -84,19 +85,14 @@ def format_games(df: pd.DataFrame) -> pd.DataFrame:
             'observed' : 'W',
             'net_yield': 'dW'
         })
-        .fillna({
-            'sur2': '',
-            'pre2': ''
-        })
         .astype(dtype={
             'date': 'datetime64[ns]',
             'R2'  : pd.Int64Dtype()
         })
         .loc[:, [
-            'pid1',
-            'date', 'place', 'significance', 'unplayed',
-            'sur2', 'pre2',
-            'R2', 'W', 'We', 'dW'
+            'pid1', 'date', 'place', 'sur2', 'pre2',
+            'unplayed', 'W',
+            'significance', 'R2', 'We', 'dW'
         ]]
     )
 
