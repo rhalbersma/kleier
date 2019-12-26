@@ -51,7 +51,7 @@ def _download(pid: int) -> Tuple[pd.DataFrame]:
     header = soup.find('h1')
     table = soup.find('table')
     assert header or not table
-    name = None if not header else _header_name(header)
+    name = np.nan if not header else _header_name(header)
     if table:
         assert name == _table_name(table)
     player = _player(pid, name)
@@ -69,7 +69,14 @@ def _download_all(pids: Sequence[int]) -> Tuple[pd.DataFrame]:
 
 def format_games(df: pd.DataFrame) -> pd.DataFrame:
     return (df
-        .pipe(lambda x: x.set_axis(x.columns.to_flat_index().map('_'.join), axis='columns', inplace=False))
+        .pipe(lambda x: x
+            .set_axis(x
+                .columns
+                .to_flat_index()
+                .map('_'.join)
+                , axis='columns', inplace=False
+            )
+        )
         .rename(columns=lambda x: x.strip('_'))
         .rename(columns=lambda x: x.replace(u'\xa0\u2191', ''))
         .rename(columns=lambda x: x.replace(' ', '_'))

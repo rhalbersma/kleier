@@ -295,11 +295,12 @@ def main():
     # get_ratings.main(max_eid, max_pid)
 
     events      = kleier.load_dataset('events').pipe(get_events.format_events)
+    groups      = kleier.load_dataset('groups').pipe(get_events.format_groups)
     standings   = kleier.load_dataset('standings').pipe(get_events.format_standings)
     results     = kleier.load_dataset('results').pipe(get_events.format_results)
     players     = kleier.load_dataset('players')
     games       = kleier.load_dataset('games').pipe(get_players.format_games)
-    ratings     = kleier.load_dataset('ratings').pipe(lambda x: get_ratings.format_ratings(x, max_eid))
+    ratings     = kleier.load_dataset('ratings').pipe(lambda x: get_ratings.format_ratings(x, events))
 
     events      = add_events_format(events)
     

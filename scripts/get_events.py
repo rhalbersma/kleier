@@ -9,6 +9,7 @@ import re
 import sys
 
 import bs4
+import numpy as np
 import pandas as pd
 import requests
 from typing import Sequence, Tuple
@@ -21,7 +22,7 @@ def _event_group(eid: int, gid: int, table_header_rows: bs4.element.ResultSet) -
         .text
         .split('\xa0\xa0\xa0\xa0\xa0\xa0')
     )
-    name, place_date = (None, name_place_date[0]) if len(name_place_date) == 1 else name_place_date
+    name, place_date = (np.nan, name_place_date[0]) if len(name_place_date) == 1 else name_place_date
     place_and_date = place_date.split()
     place = ' '.join(place_and_date[:-1])
     date = pd.to_datetime(place_and_date[-1])
@@ -73,7 +74,14 @@ def _standings(tourn_table: pd.DataFrame) -> pd.DataFrame:
 def _results(tourn_table: pd.DataFrame) -> pd.DataFrame:
     return (pd.wide_to_long(tourn_table
                 .filter(regex='eid|gid|#|Results|Unplayed')
-                .pipe(lambda x: x.set_axis(x.columns.to_flat_index().map(''.join), axis='columns', inplace=False)),
+                .pipe(lambda x: x
+                    .set_axis(x
+                        .columns
+                        .to_flat_index()
+                        .map(''.join)
+                        , axis='columns', inplace=False
+                    )
+                ),
             ['Results', 'Unplayed'], i='##', j='round'
         )
         .reset_index()
@@ -87,7 +95,7 @@ def _event_group_table(eid: int, gid: int, table: bs4.element.Tag) -> Tuple[pd.D
         tourn_table.drop(last_row.index, inplace=True)
         file_from, file_date, file_name = _file(eid, results_from.split(sep)[1])
     else:
-        file_from = file_date = file_name = None
+        file_from = file_date = file_name = np.nan
     M, N = tourn_table.filter(regex='Results').shape
     tourn_table = tourn_table.join(_unplayed(M, N, table))
     event_group = (_event_group(eid, gid, table.find('thead').find_all('tr'))
@@ -131,7 +139,7 @@ def _download(eid: int) -> Tuple[pd.DataFrame]:
     assert len(event.index) == 1
     groups = (event_groups
         .drop(columns=['place', 'date'])
-        .merge(remarks, validate='one_to_one')
+        .merge(remarks, how='outer', validate='one_to_one')
     )
     return event, groups, standings, results
 
@@ -177,7 +185,14 @@ def format_groups(df: pd.DataFrame) -> pd.DataFrame:
 
 def format_standings(df: pd.DataFrame) -> pd.DataFrame:
     return (df
-        .pipe(lambda x: x.set_axis(x.columns.to_flat_index().map('_'.join), axis='columns', inplace=False))
+        .pipe(lambda x: x
+            .set_axis(x
+                .columns
+                .to_flat_index()
+                .map('_'.join)
+                , axis='columns', inplace=False
+            )
+        )
         .rename(columns=lambda x: x.strip('_'))
         .rename(columns=lambda x: re.sub(r'(.+)_\1', r'\1', x))
         .rename(columns=lambda x: x.lower())

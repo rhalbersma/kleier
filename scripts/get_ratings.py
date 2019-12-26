@@ -5,7 +5,9 @@
 #    (See accompanying file LICENSE_1_0.txt or copy at
 #          http://www.boost.org/LICENSE_1_0.txt)
 
+import math
 import re
+import sys
 
 import bs4
 import numpy as np
@@ -33,12 +35,11 @@ def _download(max_eid: int, max_pid: int) -> pd.DataFrame:
 
 def _significance(dates: pd.Series) -> pd.Series:
     max_dates = dates.max()
-    decay = 2.5731
-    tropical_year = 365.246
+    decay, tropical_year = 2.5731, 365.246
     return np.round(np.exp(-((max_dates - dates).dt.days / (decay * tropical_year))**2), 6)
 
-def format_ratings(df: pd.DataFrame, max_eid: int) -> pd.DataFrame:
-    rating_lists = (ratings
+def format_ratings(df: pd.DataFrame, events: pd.DataFrame) -> pd.DataFrame:
+    rating_lists = (df
         .filter(regex='Rating')
         .columns
         .to_frame()
@@ -58,11 +59,13 @@ def format_ratings(df: pd.DataFrame, max_eid: int) -> pd.DataFrame:
     )
     assert rating_lists.equals(rating_lists.sort_values('eid', ascending=False))
     assert np.isclose(_significance(rating_lists['date']), rating_lists['significance'], rtol=1e-4).all()
-    ntourn = df.shape[1] - 6
     return (df
-        .pipe(lambda x:
-            x.set_axis(x
-                .columns
+        .pipe(lambda x: x
+            .set_axis(pd.
+                Index(
+                    [ t[2:] for t in x.drop(x.filter(regex='Rating'), axis='columns').columns ] +
+                    [ ('R', str(eid)) for eid in rating_lists['eid'] ]
+                )
                 .to_flat_index()
                 .map(dict.fromkeys)
                 .map(list)
@@ -72,31 +75,28 @@ def format_ratings(df: pd.DataFrame, max_eid: int) -> pd.DataFrame:
         )
         .rename(columns=lambda x: x.strip('.'))
         .rename(columns=lambda x: x.lower())
-        .rename(columns=lambda x: re.sub(r'(games)(_)(.{3}).*', r'\3\2\1', x))
+        .rename(columns=lambda x: re.sub(r'ranking(_)(\w{3}).*', r'\2\1rank', x))
+        .rename(columns=lambda x: re.sub(r'(games)(_)(\w{3}).*', r'\3\2\1', x))
         .rename(columns=lambda x: re.sub(r'(.*)name', r'\1', x))
-        .pipe(lambda x: x.rename(columns = {
-                x.columns[6 + (max_eid - eid)] : 'R' + str(eid)
-                for eid in reversed(range(1 + max_eid - ntourn, 1 + max_eid))
-            })
-        )
-        .assign(pnat = lambda x: x.ranking_natl.str.split('/').str[-1])
-        .assign(ranking_intl = lambda x:
+        .rename(columns=lambda x: re.sub(r'r_(\d+)', r'R\1', x))
+        .assign(nat = lambda x: x.nat_rank.str.split('/').str[-1])
+        .assign(int_rank = lambda x:
             np.where(
-                x.ranking_intl.str[0].str.isdigit(),
-                x.ranking_intl,
-                None
+                x.int_rank.str[0].str.isdigit(),
+                x.int_rank,
+                np.nan
             )
         )
-        .assign(ranking_natl = lambda x:
+        .assign(nat_rank = lambda x:
             np.where(
-                x.ranking_natl.str[0].str.isdigit(),
-                x.ranking_natl.str.split('/').str[0],
-                None
+                x.nat_rank.str[0].str.isdigit(),
+                x.nat_rank.str.split('/').str[0],
+                np.nan
             )
         )
-        .replace({'unrated': None})
-        .pipe(lambda x: x.astype(dtype={column: float           for column in x.columns if column.startswith('ranking')}))
-        .pipe(lambda x: x.astype(dtype={column: pd.Int64Dtype() for column in x.columns if column.startswith('ranking')}))
+        .replace({'unrated': np.nan})
+        .pipe(lambda x: x.astype(dtype={column: float           for column in x.columns if column.endswith('rank')}))
+        .pipe(lambda x: x.astype(dtype={column: pd.Int64Dtype() for column in x.columns if column.endswith('rank')}))
         .pipe(lambda x: x.astype(dtype={column: float           for column in x.columns if column.startswith('R')}))
         .pipe(lambda x: x.astype(dtype={column: pd.Int64Dtype() for column in x.columns if column.startswith('R')}))
         .pipe(lambda x: x.loc[:, x.columns.to_list()[:6] + x.columns.to_list()[-1:] + x.columns.to_list()[6:-1]])
