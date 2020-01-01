@@ -5,7 +5,6 @@
 #    (See accompanying file LICENSE_1_0.txt or copy at
 #          http://www.boost.org/LICENSE_1_0.txt)
 
-import re
 import sys
 
 import bs4
@@ -16,10 +15,10 @@ from typing import Sequence, Tuple
 
 import kleier.utils
 
-def _header_name(header: bs4.element.Tag) -> str:
+def _parse_name_header(header: bs4.element.Tag) -> str:
     return header.text.split('History of ')[1]
 
-def _table_name(table: bs4.element.Tag) -> str:
+def _parse_name_table(table: bs4.element.Tag) -> str:
     return table.attrs['summary'].split('Game Balance of ')[1]
 
 def _player(pid: int, name: str) -> pd.DataFrame:
@@ -28,7 +27,7 @@ def _player(pid: int, name: str) -> pd.DataFrame:
         columns=['pid', 'name']
     )
 
-def _games(pid: int, table: bs4.element.Tag) -> pd.DataFrame:
+def _read_games(pid: int, table: bs4.element.Tag) -> pd.DataFrame:
     return (pd
         .read_html(str(table), header=[1, 2])[0]
         .assign(
@@ -42,7 +41,7 @@ def _games(pid: int, table: bs4.element.Tag) -> pd.DataFrame:
         ]))
     )
 
-def _download(pid: int) -> Tuple[pd.DataFrame]:
+def _get_player(pid: int) -> Tuple[pd.DataFrame]:
     assert 1 <= pid
     url = f'https://www.kleier.net/cgi/player.php?pid={pid}'
     response = requests.get(url)
@@ -51,60 +50,24 @@ def _download(pid: int) -> Tuple[pd.DataFrame]:
     header = soup.find('h1')
     table = soup.find('table')
     assert header or not table
-    name = np.nan if not header else _header_name(header)
+    name = np.nan if not header else _parse_name_header(header)
     if table:
-        assert name == _table_name(table)
+        assert name == _parse_name_table(table)
     player = _player(pid, name)
-    games = None if not table else _games(pid, table)
+    games = None if not table else _read_games(pid, table)
     return player, games
 
-def _download_all(pids: Sequence[int]) -> Tuple[pd.DataFrame]:
+def _get_all_players(pid_seq: Sequence[int]) -> Tuple[pd.DataFrame]:
     return tuple(
         pd.concat(list(t), ignore_index=True, sort=False)
         for t in zip(*[
-            _download(pid)
-            for pid in pids
+            _get_player(pid)
+            for pid in pid_seq
         ])
     )
 
-def format_games(df: pd.DataFrame) -> pd.DataFrame:
-    return (df
-        .pipe(lambda x: x
-            .set_axis(x
-                .columns
-                .to_flat_index()
-                .map('_'.join)
-                , axis='columns', inplace=False
-            )
-        )
-        .rename(columns=lambda x: x.strip('_'))
-        .rename(columns=lambda x: x.replace(u'\xa0\u2191', ''))
-        .rename(columns=lambda x: x.replace(' ', '_'))
-        .rename(columns=lambda x: x.lower())
-        .rename(columns=lambda x: re.sub(r'event_(.*)', r'\1', x))
-        .rename(columns=lambda x: re.sub(r'opponent_(.*)', r'\g<1>2', x))
-        .rename(columns=lambda x: re.sub(r'result_(.*)', r'\1', x))
-        .rename(columns=lambda x: re.sub(r'(.*)name(.*)', r'\1\2', x))
-        .rename(columns={
-            'pid'      : 'pid1',
-            'rating2'  : 'R2',
-            'expected' : 'We',
-            'observed' : 'W',
-            'net_yield': 'dW'
-        })
-        .astype(dtype={
-            'date': 'datetime64[ns]',
-            'R2'  : pd.Int64Dtype()
-        })
-        .loc[:, [
-            'pid1', 'date', 'place', 'sur2', 'pre2',
-            'unplayed', 'W',
-            'significance', 'R2', 'We', 'dW'
-        ]]
-    )
-
 def main(max_pid: int) -> Tuple[pd.DataFrame]:
-    players, games = _download_all(range(1, 1 + max_pid))
+    players, games = _get_all_players(range(1, 1 + max_pid))
     kleier.utils._save_dataset(players, 'players')
     kleier.utils._save_dataset(games, 'games')
     return players, games

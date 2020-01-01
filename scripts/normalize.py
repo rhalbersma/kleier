@@ -13,48 +13,28 @@ import scipy.stats as stats
 
 import kleier.utils
 
+import fmt_events
+import fmt_players
+#import fmt_ratings
 import get_events
 import get_players
 import get_ratings
 
-def add_events_format(events: pd.DataFrame) -> pd.DataFrame:
-    return (events
-        .assign(format = lambda x:
-            np.where(
-                x.N == x.M - 1 + x.M % 2,
-                'RR1',
-                np.where(
-                    x.N == 2 * (x.M - 1 + x.M % 2),
-                    'RR2',
-                    np.where(
-                        x.N >= x.M,
-                        'RRX',
-                        'SS'
-                    )
-                )
-            )
-        )
-        .loc[:, [
-            'eid', 'gid', 'date', 'place', 'enat',
-            'pW', 'pD', 'pL', 'M', 'N', 'format',
-            'group', 'name', 'file_from', 'file_date', 'file_name', 'remarks'
-        ]]
-    )
-
 def normalize_players(players: pd.DataFrame, standings: pd.DataFrame) -> pd.DataFrame:
-    pid_sur_pre_pnat = (players
+    assert not players.loc[:, ['name']].duplicated().any()
+    pid_sur_pre_nat = (players
         .merge(standings
-            .loc[:, ['sur', 'pre', 'pnat']]
+            .loc[:, ['sur', 'pre', 'nat']]
             .drop_duplicates()
             .assign(name = lambda x: x.pre + ' ' + x.sur)
-            .assign(name = lambda x: x.name.str.strip()),
-            how='outer', indicator=True, validate='one_to_one'
+            .assign(name = lambda x: x.name.str.strip())
+            , how='outer', on=['name'], indicator=True, validate='one_to_one'
         )
     )
-    return (pid_sur_pre_pnat
+    df = (pid_sur_pre_nat
         .query('_merge == "both"')
         .drop(columns=['name', '_merge'])
-        .append(pid_sur_pre_pnat
+        .append(pid_sur_pre_nat
             .query('_merge != "both"')
             .assign(
                 sur = lambda x: x.name.str.split(expand=True)[1],
@@ -62,31 +42,152 @@ def normalize_players(players: pd.DataFrame, standings: pd.DataFrame) -> pd.Data
             )
             .drop(columns=['name', '_merge'])
         )
-        .sort_values('pid')
+        .sort_values('id')
     )
+    assert not df.loc[:, ['pre', 'sur']].duplicated().any()
+    assert not df.loc[:, ['id'        ]].duplicated().any()
+    assert df.equals(df.sort_values('id'))
+    assert df.index.is_monotonic_increasing
+    assert df.index.is_unique
+    return df
+
+def normalize_standings(standings: pd.DataFrame, players: pd.DataFrame) -> pd.DataFrame:
+    assert not standings.loc[:, ['group_id', 'sur', 'pre', 'nat']].duplicated().any()
+    df = (standings
+        .merge(players
+            .rename(columns={'id': 'player_id'})
+            , how='left', on=['sur', 'pre', 'nat'], validate='many_to_one'
+        )
+        .loc[:, [
+            'group_id', 'player_id', 
+            'rank', 'score', 'buchholz', 'median', 'dmr_W', 'dmr_N',
+            'eff_games', 'Ro', 'dR', 'Rn'
+        ]]
+    )
+    assert not df.loc[:, ['group_id', 'player_id']].duplicated().any()
+    assert not df.loc[:, ['group_id', 'rank'     ]].duplicated().any()
+    assert df.equals(df.sort_values(
+        ['group_id', 'score', 'median', 'buchholz', 'dmr_W'], 
+        ascending=[True, False, False, False, False]
+    ))    
+    assert df.equals(df.sort_values(['group_id', 'rank']))
+    assert df.index.is_monotonic_increasing
+    assert df.index.is_unique
+    return df
+
+def normalize_results(results: pd.DataFrame, standings: pd.DataFrame) -> pd.DataFrame:
+    p1 = (standings
+        .loc[:, ['group_id', 'player_id', 'rank']]
+        .add_suffix('_1')
+        .rename(columns={'group_id_1': 'group_id'})
+    )
+    p2 = (standings
+        .loc[:, ['group_id', 'player_id', 'rank']]
+        .add_suffix('_2')
+        .rename(columns={'group_id_2': 'group_id'})
+    )
+    games = (results
+        .query('rank_2 != 0')
+        .reset_index()
+        .merge(p1, how='left', on=['group_id', 'rank_1'], validate='many_to_one')
+        .set_index('index', verify_integrity=True)
+        .reset_index()
+        .merge(p2, how='left', on=['group_id', 'rank_2'], validate='many_to_one')
+        .set_index('index', verify_integrity=True)
+        .rename_axis(None)
+    )
+    dummy = (results
+        .query('rank_2 == 0')
+        .reset_index()
+        .merge(p1, how='left', on=['group_id', 'rank_1'], validate='many_to_one')
+        .assign(player_id_2 = 0)
+        .set_index('index', verify_integrity=True)
+        .rename_axis(None)
+    )
+    df = (pd
+        .concat([games, dummy])
+        .loc[:, [
+            'group_id', 'player_id_1', 'player_id_2',
+            'round', 'unplayed', 'W'
+        ]]
+        .sort_index()
+    )
+    assert not df.loc[:, ['group_id', 'player_id_1', 'round']].duplicated().any()
+    assert df.index.is_monotonic_increasing
+    assert df.index.is_unique
+    return df
+
+def normalize_games(games: pd.DataFrame, events: pd.DataFrame, players: pd.DataFrame) -> pd.DataFrame:
+    df = (games
+        .merge(events
+            .loc[:, ['id', 'date', 'place']]
+            .rename(columns={'id': 'event_id'})
+            , how='left', on=['date', 'place'], validate='many_to_one'
+        )
+        .merge(players
+            .loc[:, ['id', 'sur', 'pre']]
+            .add_suffix('_2')
+            .rename(columns={'id_2': 'player_id_2'})
+            , how='left', on=['sur_2', 'pre_2'], validate='many_to_one'
+        )
+        .loc[:, [
+            'event_id', 'player_id_1', 'player_id_2',
+            'R_2', 'significance', 'unplayed', 'W', 'We', 'dW'
+        ]]
+    )
+
+def _group_format(M: pd.Series, N: pd.Series) -> pd.Series:
+    return np.where(
+        N == M - 1 + M % 2,
+        'RR1',
+        np.where(
+            N == 2 * (M - 1 + M % 2),
+            'RR2',
+            np.where(
+                N >= M,
+                'RRX',
+                'SS'
+            )
+        )
+    )
+
+def add_groups_format(groups: pd.DataFrame) -> pd.DataFrame:
+    return (groups
+        .assign(format = lambda x: _group_format(x.M, x.N))
+        .loc[:, [
+            'id', 'event_id', 
+            'name', 'group', 'score_W', 'score_D', 'score_L', 
+            'M', 'N', 'format',
+            'file_from', 'file_date', 'file_name', 'remarks'
+        ]]
+    )
+
 
 def merge_games_pinf(games: pd.DataFrame, players: pd.DataFrame) -> pd.DataFrame:
     return (games
         .merge(players
-            .rename(columns=lambda x: x + '1'),
+            .rename(columns={'id': 'player_id'})
+            .add_suffix('_1'),
             how='left', validate='many_to_one'
         )
         .merge(players
-            .rename(columns=lambda x: x + '2'),
+            .rename(columns={'id': 'player_id'})
+            .add_suffix('_2'),
             how='left', validate='many_to_one'
         )
         .loc[:, [
-            'date', 'place', 'unplayed',
-            'pid1', 'sur1', 'pre1', 'pnat1', 'R1',
-            'pid2', 'sur2', 'pre2', 'pnat2', 'R2',
-            'significance', 'W', 'We', 'dW'
+            'id', 'date', 'place',
+            'player_id_1', 'sur_1', 'pre_1', 'nat_1',
+            'player_id_2', 'sur_2', 'pre_2', 'nat_2', 
+            'R_2', 'significance', 
+            'unplayed', 'W', 'We', 'dW'
         ]]
     )
 
 def append_games_anonymous(games: pd.DataFrame) -> pd.DataFrame:
     return (games
         .append(games
-            .query('sur2 == "" & pre2 == ""')
+            .query('sur_2.isnul() & pre_2.isnul()')
             .loc[:, [
                 'date', 'place', 'unplayed',
                 'pid2', 'sur2', 'pre2', 'pnat2', 'R2',
@@ -103,7 +204,7 @@ def append_games_anonymous(games: pd.DataFrame) -> pd.DataFrame:
             )
         )
         .sort_values(
-            by=['pid1', 'date', 'R2'],
+            by=['player_id_1', 'date', 'R_2'],
             ascending=[True, False, False]
         )
         .reset_index(drop=True)
@@ -288,35 +389,41 @@ def event_cross_ratings(event_cross: pd.DataFrame) -> pd.DataFrame:
 
 def main():
     # Complete Kleier archive as of 2019-12-15
-    now = pd.to_datetime('2019-12-15')
-    max_eid, max_pid = 670, 2970
+    # now = pd.to_datetime('2019-12-15')
+    # max_eid, max_pid = 670, 2970
     # get_events.main(max_eid)
     # get_players.main(max_pid)
     # get_ratings.main(max_eid, max_pid)
 
-    events      = kleier.load_dataset('events').pipe(get_events.format_events)
-    groups      = kleier.load_dataset('groups').pipe(get_events.format_groups)
-    standings   = kleier.load_dataset('standings').pipe(get_events.format_standings)
-    results     = kleier.load_dataset('results').pipe(get_events.format_results)
-    players     = kleier.load_dataset('players')
-    games       = kleier.load_dataset('games').pipe(get_players.format_games)
-    ratings     = kleier.load_dataset('ratings').pipe(lambda x: get_ratings.format_ratings(x, events))
+    events      = kleier.load_dataset('events'   ).pipe(fmt_events.format_events   )
+    groups      = kleier.load_dataset('groups'   ).pipe(fmt_events.format_groups   )
+    standings   = kleier.load_dataset('standings').pipe(fmt_events.format_standings)
+    results     = kleier.load_dataset('results'  ).pipe(fmt_events.format_results  )
+    players     = kleier.load_dataset('players'  ).pipe(fmt_players.format_players )
+    games       = kleier.load_dataset('games'    ).pipe(fmt_players.format_games   )    
+    ratings     = kleier.load_dataset('ratings'  ) # TODO: formatting
 
-    events      = add_events_format(events)
+    assert not events.loc[:, ['place', 'date']].duplicated().any()
+    assert not groups.drop(columns='id').duplicated().any()
     
     players     = normalize_players(players, standings)
-    assert not players.duplicated().any()
+    standings   = normalize_standings(standings, players)
+    results     = normalize_results(results, standings)
     
+    games       = normalize_games(games, players)
+
+    groups      = add_groups_format(groups)    
     games       = merge_games_pinf(games, players)
+
     games       = append_games_anonymous(games)
     standings   = merge_standings_einf_pinf(standings, events, players)
     results     = merge_results_einf_pinf(results, events, standings)
     results     = merge_results_games(results, games)
 
 
-    event_cross  = event_cross_add_outcome(event_cross)
-    event_table  = event_table_add_outcome(event_table, event_cross)
+    event_cross = event_cross_add_outcome(event_cross)
+    event_table = event_table_add_outcome(event_table, event_cross)
 
-    event_cross  = event_cross_add_points(event_cross, event_index)
-    event_table  = event_table_add_points(event_table, event_cross)
+    event_cross = event_cross_add_points(event_cross, event_index)
+    event_table = event_table_add_points(event_table, event_cross)
 
