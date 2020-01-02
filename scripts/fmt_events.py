@@ -7,6 +7,7 @@ import re
 
 import numpy as np
 import pandas as pd
+from typing import Tuple
 
 def format_events(df: pd.DataFrame) -> pd.DataFrame:
     return (df
@@ -29,8 +30,8 @@ def format_groups(df: pd.DataFrame) -> pd.DataFrame:
         })
     )
 
-def format_standings(df: pd.DataFrame) -> pd.DataFrame:
-    return (df
+def format_standings(df: pd.DataFrame) -> Tuple[pd.DataFrame]:
+    standings_activity = (df
         .pipe(lambda x: x
             .set_axis(x
                 .columns
@@ -60,8 +61,10 @@ def format_standings(df: pd.DataFrame) -> pd.DataFrame:
         .astype(dtype={column: int             for column in ['rank', 'score', 'dmr_W', 'dmr_N']})
         .astype(dtype={column: float           for column in ['Rn', 'dR']})
         .astype(dtype={column: pd.Int64Dtype() for column in ['Rn', 'dR']})
-        .astype(dtype={column: float           for column in ['eff_games', 'buchholz', 'median']})
+        .astype(dtype={column: float           for column in ['eff_games', 'median', 'buchholz']})
         .assign(Ro = lambda x: x.Rn - x.dR) # Ro = a player's rating before a performance (Elo, 1978)
+    )
+    standings = (standings_activity
         .pipe(lambda x: x
             .merge(x
                 .loc[:, ['event_id', 'gid']]
@@ -74,10 +77,18 @@ def format_standings(df: pd.DataFrame) -> pd.DataFrame:
         )
         .loc[:, [
             'group_id', 'sur', 'pre', 'nat',
-            'rank', 'score', 'buchholz', 'median', 'dmr_W', 'dmr_N',
-            'eff_games', 'Ro', 'dR', 'Rn'
+            'rank', 'score', 'median', 'buchholz', 'dmr_W', 'dmr_N'
         ]]
     )
+    activity = (standings_activity
+        .loc[:, [
+            'sur', 'pre', 'nat', 'event_id',
+            'eff_games', 'Ro', 'dR', 'Rn'
+        ]]
+        .drop_duplicates()
+        .reset_index(drop=True)
+    )
+    return standings, activity
 
 def format_results(df: pd.DataFrame) -> pd.DataFrame:
     return (df
@@ -98,8 +109,8 @@ def format_results(df: pd.DataFrame) -> pd.DataFrame:
             W      = lambda x: x.result.str.slice(   -1)
         )
         .replace({'W': {    # W = number of wins, draws counting 1/2 (Elo, 1978)
-            '+': 1.0, 
-            '=': 0.5, 
+            '+': 1.0,
+            '=': 0.5,
             '-': 0.0,
             '?': np.nan
         }})
@@ -115,7 +126,7 @@ def format_results(df: pd.DataFrame) -> pd.DataFrame:
             )
         )
         .loc[:, [
-            'group_id', 'rank_1', 'rank_2', 
+            'group_id', 'rank_1', 'rank_2',
             'round', 'unplayed', 'W'
         ]]
     )

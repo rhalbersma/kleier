@@ -1,52 +1,35 @@
 #!/usr/bin/env python
 
-#          Copyright Rein Halbersma 2019.
-# Distributed under the Boost Software License, Version 1.0.
-#    (See accompanying file LICENSE_1_0.txt or copy at
-#          http://www.boost.org/LICENSE_1_0.txt)
 
-delta           = 800
-
-# 1.22
-min_p           = .35
-
-# 1.3
-min_title_games = 30
-
-min_rating_FM   = 2300 - delta  # 1.31
-min_rating_CM   = 2200 - delta  # 1.32
-min_rating_WFM  = 2100 - delta  # 1.33
-min_rating_WCM  = 2000 - delta  # 1.34
-
-# 1.46b
-adj_rating_GM   = 2200 - delta
-adj_rating_IM   = 2050 - delta
-adj_rating_WGM  = 2000 - delta
-adj_rating_WIM  = 1850 - delta
-
-# 1.46d
-rating_floor    = 1000 - delta
-
-# 1.48
-norm_rating_GM  = 2600 - delta
-norm_rating_IM  = 2450 - delta
-norm_rating_WGM = 2400 - delta
-norm_rating_WIM = 2250 - delta
-
-# 1.48a
-avg_rating_GM   = 2380 - delta
-avg_rating_IM   = 2230 - delta
-avg_rating_WGM  = 2180 - delta
-avg_rating_WIM  = 2030 - delta
-
-# 1.49
-min_norm_games  = 27
-
-# 1.53
-min_rating_GM   = 2500 - delta
-min_rating_IM   = 2400 - delta
-min_rating_WGM  = 2300 - delta
-min_rating_WIM  = 2200 - delta
+def event_cross_ratings(event_cross: pd.DataFrame) -> pd.DataFrame:
+    df = event_cross
+    df = (df
+        .query('rank2 != 0')
+        .assign(
+            R = lambda x: x.rating2.where(x.rating2 >= rating_floor, rating_floor),
+            p = lambda x: x.outcome.map({
+                'W': 1.0,
+                'D': 0.5,
+                'L': 0.0})
+        )
+        .sort_values(
+            by=       ['eid', 'gid', 'rank1', 'R',    'rank2'],
+            ascending=[ True,  True,  True,    False,  True]))
+    df2 = (df
+        .groupby(['eid', 'gid', 'rank1', 'pid1', 'sur1', 'pre1', 'nat1'])
+        .agg(
+            n  = ('R', 'count'),
+            p  = ('p', 'mean'),
+            Ra = ('R', 'mean'))
+        .reset_index()
+        .round({'Ra': 0})
+        .assign(
+            dp = lambda x: dp(x.n, x.p),
+            Rp = lambda x: x.Ra + x.dp)
+        .astype(dtype={
+            'Ra': int,
+            'dp': int,
+            'Rp': int}))
 
 def player_history(event_table: pd.DataFrame) -> pd.DataFrame:
     df = (event_table

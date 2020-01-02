@@ -46,7 +46,7 @@ def format_games(df: pd.DataFrame) -> pd.DataFrame:
             'R_2'  : pd.Int64Dtype()
         })
         .loc[:, [
-            'date', 'place', 'player_id_1', 'sur_2', 'pre_2', 
+            'date', 'place', 'player_id_1', 'sur_2', 'pre_2',
             'R_2', 'significance',
             'unplayed', 'W', 'We', 'dW'
         ]]
