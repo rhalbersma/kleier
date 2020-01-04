@@ -1,12 +1,14 @@
-#          Copyright Rein Halbersma 2019.
+#          Copyright Rein Halbersma 2019-2020.
 # Distributed under the Boost Software License, Version 1.0.
 #    (See accompanying file LICENSE_1_0.txt or copy at
 #          http://www.boost.org/LICENSE_1_0.txt)
 
-# TODO: least squares fit of Gaussian over y = [ 1.0, 0.8, 0.55, 0.3, 0.05 ] for x = [ 0, 1, 2, 3, 4 ]
+import numpy as np
+import pandas as pd
 
 def _significance(dates: pd.Series, base_date=None) -> pd.Series:
-    decay = 2.5731              # https://www.kleier.net/txt/rating_23.html#SEC23
+    # https://www.kleier.net/txt/rating_23.html#SEC23
+    decay = 2.5731
     tropical_year = 365.246
     if base_date is None:
         base_date = dates.max()

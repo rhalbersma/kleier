@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-
-#          Copyright Rein Halbersma 2019.
+#          Copyright Rein Halbersma 2019-2020.
 # Distributed under the Boost Software License, Version 1.0.
 #    (See accompanying file LICENSE_1_0.txt or copy at
 #          http://www.boost.org/LICENSE_1_0.txt)
@@ -275,10 +273,10 @@ def normalize_games(games: pd.DataFrame, events: pd.DataFrame, players: pd.DataF
 def main() -> None:
     # Complete Kleier archive as of 2019-12-15
     # now = pd.to_datetime('2019-12-15')
-    max_eid, max_pid = 670, 2970
-    get_events.main(max_eid)
-    get_players.main(max_pid)
-    get_ratings.main(max_eid, max_pid)
+    # max_eid, max_pid = 670, 2970
+    # get_events.main(max_eid)
+    # get_players.main(max_pid)
+    # get_ratings.main(max_eid, max_pid)
 
     events                  = kleier.load_dataset('events'   ).pipe(fmt_events.format_events   )
     groups                  = kleier.load_dataset('groups'   ).pipe(fmt_events.format_groups   )

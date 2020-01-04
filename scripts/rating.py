@@ -1,5 +1,47 @@
-#!/usr/bin/env python
+#          Copyright Rein Halbersma 2019-2020.
+# Distributed under the Boost Software License, Version 1.0.
+#    (See accompanying file LICENSE_1_0.txt or copy at
+#          http://www.boost.org/LICENSE_1_0.txt)
 
+import numpy as np
+import pandas as pd
+import scipy.stats as ss
+
+def pd_norm(dR, sigma):
+    return ss.norm.cdf(dR, 0, sigma)
+
+sigma_0 = 200 * np.sqrt(2)      # standard deviation of dR if R_1 and R_2 have standard deviation 200
+sigma_1 = 2000 / 7              # easy manual computation of dR * 7 / 2000 to 4 digits for table lookup
+
+def pd_logistic(dR, s):
+    return ss.logistic.cdf(dR, 0, s)
+
+s_0 = 400 / np.log(10)          # converstion from base-10 and scale = 400
+s_1 = 100 * np.sqrt(np.pi)      # same slope at dR = 0 as norm.pdf with sigma = 200 * sqrt(2)
+s_2 = 200 * np.sqrt(6) / np.pi  # equal variance as norm.pdf with sigma = 200 * sqrt(2)
+
+def reduce_prediction(games):
+    df = (games
+        .query('We.notnull()')
+        .loc[:,['player_id_1', 'player_id_2', 'R_1', 'R_2', 'We']]
+        .drop_duplicates()
+        .sort_values(
+            ['player_id_1', 'R_2'],
+            ascending=[True, False]
+        )
+        .reset_index(drop=True)
+        .astype(dtype={column: float for column in ['R_1', 'R_2']})
+        .assign(
+            pd_sigma_0 = lambda x: pd_norm(x.R_1 - x.R_2, sigma_0),
+            pd_sigma_1 = lambda x: pd_norm(x.R_1 - x.R_2, sigma_1),
+            pd_s_0 = lambda x: pd_logistic(x.R_1 - x.R_2, s_0),
+            pd_s_1 = lambda x: pd_logistic(x.R_1 - x.R_2, s_1),
+            pd_s_2 = lambda x: pd_logistic(x.R_1 - x.R_2, s_2)
+        )
+    )
+    df.loc[:, [
+        'We', 'pd_sigma_0', 'pd_sigma_1', 'pd_s_0', 'pd_s_1', 'pd_s_2'
+    ]].corr()
 
 def event_cross_ratings(event_cross: pd.DataFrame) -> pd.DataFrame:
     df = event_cross
