@@ -83,7 +83,7 @@ def format_standings(df: pd.DataFrame) -> Tuple[pd.DataFrame]:
     activity = (standings_activity
         .loc[:, [
             'sur', 'pre', 'nat', 'event_id',
-            'eff_games', 'Ro', 'dR', 'Rn'
+            'eff_games', 'Rn', 'Ro', 'dR'
         ]]
         .drop_duplicates()
         .reset_index(drop=True)

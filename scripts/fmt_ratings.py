@@ -94,7 +94,7 @@ def format_ratings(df: pd.DataFrame) -> Tuple[pd.DataFrame]:
     long_rat_table = _long_rat_table(df, lists)
     ratings = (long_rat_table
         .query('list_id == 0')
-        .drop(columns=['list_id'])
+        .drop(columns=['list_id', 'date', 'place'])
     )
     history = (long_rat_table
         .drop(columns=['int_rank', 'nat_rank', 'eff_games', 'tot_games'])

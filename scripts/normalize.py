@@ -74,17 +74,12 @@ def normalize_players(players: pd.DataFrame, standings: pd.DataFrame) -> pd.Data
 def normalize_ratings(ratings: pd.DataFrame, events: pd.DataFrame, players: pd.DataFrame) -> pd.DataFrame:
     assert not ratings.loc[:, ['sur', 'pre', 'nat']].duplicated().any()
     df = (ratings
-        .merge(events
-            .loc[:, ['id', 'date', 'place']]
-            .rename(columns={'id': 'event_id'})
-            , how='left', on=['date', 'place'], validate='many_to_one'
-        )
         .merge(players
             .rename(columns={'id': 'player_id'})
             , how='left', on=['sur', 'pre', 'nat'], validate='many_to_one'
         )
         .loc[:, [
-            'event_id', 'player_id',
+            'player_id',
             'R', 'int_rank', 'nat_rank',
             'eff_games', 'tot_games'
         ]]
@@ -106,12 +101,18 @@ def normalize_history(history: pd.DataFrame, events: pd.DataFrame, players: pd.D
             .rename(columns={'id': 'player_id'})
             , how='left', on=['sur', 'pre', 'nat'], validate='many_to_one'
         )
+        .rename(columns={'R': 'Rn'})
         .loc[:, [
-            'event_id', 'player_id', 'R'
+            'event_id', 'player_id', 'Rn'
         ]]
+        .sort_values(['player_id', 'event_id'])
+        .groupby(['player_id'])
+        .apply(lambda p: p.assign(Ro = lambda x: x.Rn.shift(1)))
+        .sort_index()
+        .assign(dR = lambda x: x.Rn - x.Ro)
     )
     assert not df.loc[:, ['event_id', 'player_id']].duplicated().any()
-    assert df.equals(df.reset_index().sort_values(['event_id', 'R', 'index'], ascending=[True, False, True]).drop(columns=['index']))
+    assert df.equals(df.reset_index().sort_values(['event_id', 'Rn', 'index'], ascending=[True, False, True]).drop(columns=['index']))
     assert _has_consistent_index(df)
     return df
 
@@ -163,7 +164,7 @@ def normalize_activity(activity: pd.DataFrame, players: pd.DataFrame) -> pd.Data
         )
         .loc[:, [
             'player_id', 'event_id',
-            'eff_games', 'Ro', 'dR', 'Rn'
+            'eff_games', 'Rn', 'Ro', 'dR'
         ]]
         .sort_values(['player_id', 'event_id'])
         .reset_index(drop=True)
