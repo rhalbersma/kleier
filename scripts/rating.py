@@ -7,18 +7,27 @@ import numpy as np
 import pandas as pd
 import scipy.stats as ss
 
-def pd_norm(dR, sigma):
-    return ss.norm.cdf(dR, 0, sigma)
+s_norm_0 = 200 * np.sqrt(2)             # standard deviation of dR if R_1 and R_2 have standard deviation 200
+s_norm_1 = 2000 / 7                     # easy manual computation of dR * 7 / 2000 to 4 digits for table lookup
 
-sigma_0 = 200 * np.sqrt(2)      # standard deviation of dR if R_1 and R_2 have standard deviation 200
-sigma_1 = 2000 / 7              # easy manual computation of dR * 7 / 2000 to 4 digits for table lookup
+def pd_norm(dR, s):
+    return ss.norm.cdf(dR / s)
+
+def dp_norm(p, s):
+    return ss.norm.ppf(p) * s
+
+s_logistic_0 = 400 / np.log(10)         # converstion from base-10 and scale = 400
+s_logistic_1 = 100 * np.sqrt(np.pi)     # equal slope at dR = 0 as norm.pdf with sigma = 200 * sqrt(2)
+s_logistic_2 = 200 * np.sqrt(6) / np.pi # equal variance as norm.pdf with sigma = 200 * sqrt(2)
 
 def pd_logistic(dR, s):
-    return ss.logistic.cdf(dR, 0, s)
+    return ss.logistic.cdf(dR / s)
 
-s_0 = 400 / np.log(10)          # converstion from base-10 and scale = 400
-s_1 = 100 * np.sqrt(np.pi)      # same slope at dR = 0 as norm.pdf with sigma = 200 * sqrt(2)
-s_2 = 200 * np.sqrt(6) / np.pi  # equal variance as norm.pdf with sigma = 200 * sqrt(2)
+def dp_logistic(p, s):
+    return ss.logistic.ppf(p) * s
+
+def tpr(W, R, distribution='norm', method='avg'):
+    pass
 
 def reduce_prediction(games):
     df = (games
@@ -75,7 +84,7 @@ def event_cross_ratings(event_cross: pd.DataFrame) -> pd.DataFrame:
 
 def player_history(event_table: pd.DataFrame) -> pd.DataFrame:
     df = (event_table
-        .loc[:, ['eid', 'gid', 'place', 'date', 'rank', 'pid', 'sur', 'pre', 'nat', 'rating', 'P']]
+        .loc[:, ['eid', 'gid', 'place', 'date', 'rank', 'pid', 'pre', 'sur', 'nat', 'rating', 'P']]
         .sort_values(['pid', 'eid', 'gid'])
         .reset_index(drop=True))
     df = (df
@@ -135,7 +144,7 @@ def poty(player_index: pd.DataFrame, event_cross: pd.DataFrame) -> pd.DataFrame:
             Rp = lambda x: x.Ra + x.dp)
         .astype(dtype={'Ra': int, 'dp': int, 'Rp': int}))
     df2 = pd.merge(player_index, df)
-    columns = ['year', 'sur', 'pre', 'nat', 'games', 'pts', 'p', 'dp', 'Ra', 'Rp']
+    columns = ['year', 'pre', 'sur', 'nat', 'games', 'pts', 'p', 'dp', 'Ra', 'Rp']
     return df2[columns].sort_values(['year', 'Rp'], ascending=[True, False])
 
         .query('P != 0')

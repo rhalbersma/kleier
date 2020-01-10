@@ -35,7 +35,7 @@ def _read_games(pid: int, table: bs4.element.Tag) -> pd.DataFrame:
         )
         .pipe(lambda x: x.loc[:, x.columns.to_list()[-1:] + x.columns.to_list()[:-1]])
         .assign(Unplayed = pd.Series([
-            np.nan if not td.has_attr('class') else td['class'][0] == 'unplayed'
+            td['class'][0] == 'unplayed' if td.has_attr('class') else np.nan
             for tr in table.find_all('tr')[3:]
             for td in tr.find_all('td')[-1:]
         ]))
@@ -50,11 +50,11 @@ def _get_player(pid: int) -> Tuple[pd.DataFrame]:
     header = soup.find('h1')
     table = soup.find('table')
     assert header or not table
-    name = np.nan if not header else _parse_name_header(header)
+    name = _parse_name_header(header) if header else np.nan
     if table:
         assert name == _parse_name_table(table)
     player = _player(pid, name)
-    games = None if not table else _read_games(pid, table)
+    games = _read_games(pid, table) if table else None
     return player, games
 
 def _get_all_players(pid_seq: Sequence[int]) -> Tuple[pd.DataFrame]:

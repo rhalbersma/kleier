@@ -84,7 +84,7 @@ def _long_rat_table(rat_table: pd.DataFrame, lists: pd.DataFrame) -> pd.DataFram
         .astype(dtype={column: float           for column in ['R', 'int_rank', 'nat_rank']})
         .astype(dtype={column: pd.Int64Dtype() for column in ['R', 'int_rank', 'nat_rank']})
         .loc[:, [
-            'list_id', 'date', 'place', 'sur', 'pre', 'nat',
+            'list_id', 'date', 'place', 'pre', 'sur', 'nat',
             'R', 'int_rank', 'nat_rank', 'eff_games', 'tot_games'
         ]]
     )

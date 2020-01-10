@@ -45,11 +45,11 @@ def normalize_players(players: pd.DataFrame, standings: pd.DataFrame) -> pd.Data
     assert not players.loc[:, ['name']].duplicated().any()
     pid_sur_pre_nat = (players
         .merge(standings
-            .loc[:, ['sur', 'pre', 'nat']]
+            .loc[:, ['pre', 'sur', 'nat']]
             .drop_duplicates()
             .assign(name = lambda x: x.pre + ' ' + x.sur)
             .assign(name = lambda x: x.name.str.strip())
-            , how='outer', on=['name'], indicator=True, validate='one_to_one'
+            , how='outer', on='name', indicator=True, validate='one_to_one'
         )
     )
     df = (pid_sur_pre_nat
@@ -58,8 +58,8 @@ def normalize_players(players: pd.DataFrame, standings: pd.DataFrame) -> pd.Data
         .append(pid_sur_pre_nat
             .query('_merge != "both"')
             .assign(
-                sur = lambda x: x.name.str.split(expand=True)[1],
-                pre = lambda x: x.name.str.split(expand=True)[0]
+                pre = lambda x: x.name.str.split(expand=True)[0],
+                sur = lambda x: x.name.str.split(expand=True)[1]
             )
             .drop(columns=['name', '_merge'])
         )
@@ -72,11 +72,11 @@ def normalize_players(players: pd.DataFrame, standings: pd.DataFrame) -> pd.Data
     return df
 
 def normalize_ratings(ratings: pd.DataFrame, events: pd.DataFrame, players: pd.DataFrame) -> pd.DataFrame:
-    assert not ratings.loc[:, ['sur', 'pre', 'nat']].duplicated().any()
+    assert not ratings.loc[:, ['pre', 'sur', 'nat']].duplicated().any()
     df = (ratings
         .merge(players
             .rename(columns={'id': 'player_id'})
-            , how='left', on=['sur', 'pre', 'nat'], validate='many_to_one'
+            , how='left', on=['pre', 'sur', 'nat'], validate='many_to_one'
         )
         .loc[:, [
             'player_id',
@@ -90,7 +90,7 @@ def normalize_ratings(ratings: pd.DataFrame, events: pd.DataFrame, players: pd.D
     return df
 
 def normalize_history(history: pd.DataFrame, events: pd.DataFrame, players: pd.DataFrame) -> pd.DataFrame:
-    assert not history.loc[:, ['date', 'place', 'sur', 'pre', 'nat']].duplicated().any()
+    assert not history.loc[:, ['date', 'place', 'pre', 'sur', 'nat']].duplicated().any()
     df = (history
         .merge(events
             .loc[:, ['id', 'date', 'place']]
@@ -99,14 +99,14 @@ def normalize_history(history: pd.DataFrame, events: pd.DataFrame, players: pd.D
         )
         .merge(players
             .rename(columns={'id': 'player_id'})
-            , how='left', on=['sur', 'pre', 'nat'], validate='many_to_one'
+            , how='left', on=['pre', 'sur', 'nat'], validate='many_to_one'
         )
         .rename(columns={'R': 'Rn'})
         .loc[:, [
             'event_id', 'player_id', 'Rn'
         ]]
         .sort_values(['player_id', 'event_id'])
-        .groupby(['player_id'])
+        .groupby('player_id')
         .apply(lambda p: p.assign(Ro = lambda x: x.Rn.shift(1)))
         .sort_index()
         .assign(dR = lambda x: x.Rn - x.Ro)
@@ -134,11 +134,11 @@ def normalize_lists(lists: pd.DataFrame, events: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def normalize_standings(standings: pd.DataFrame, players: pd.DataFrame) -> pd.DataFrame:
-    assert not standings.loc[:, ['group_id', 'sur', 'pre', 'nat']].duplicated().any()
+    assert not standings.loc[:, ['group_id', 'pre', 'sur', 'nat']].duplicated().any()
     df = (standings
         .merge(players
             .rename(columns={'id': 'player_id'})
-            , how='left', on=['sur', 'pre', 'nat'], validate='many_to_one'
+            , how='left', on=['pre', 'sur', 'nat'], validate='many_to_one'
         )
         .loc[:, [
             'group_id', 'player_id',
@@ -156,11 +156,11 @@ def normalize_standings(standings: pd.DataFrame, players: pd.DataFrame) -> pd.Da
     return df
 
 def normalize_activity(activity: pd.DataFrame, players: pd.DataFrame) -> pd.DataFrame:
-    assert not activity.loc[:, ['sur', 'pre', 'nat', 'event_id']].duplicated().any()
+    assert not activity.loc[:, ['pre', 'sur', 'nat', 'event_id']].duplicated().any()
     df = (activity
         .merge(players
             .rename(columns={'id': 'player_id'})
-            , how='left', on=['sur', 'pre', 'nat'], validate='many_to_one'
+            , how='left', on=['pre', 'sur', 'nat'], validate='many_to_one'
         )
         .loc[:, [
             'player_id', 'event_id',
@@ -223,7 +223,7 @@ def normalize_games(games: pd.DataFrame, events: pd.DataFrame, players: pd.DataF
             , how='left', on=['date', 'place'], validate='many_to_one'
         )
         .merge(players
-            .loc[:, ['id', 'sur', 'pre']]
+            .loc[:, ['id', 'pre', 'sur']]
             .add_suffix('_2')
             .rename(columns={'id_2': 'player_id_2'})
             , how='left', on=['sur_2', 'pre_2'], validate='many_to_one'
@@ -231,7 +231,7 @@ def normalize_games(games: pd.DataFrame, events: pd.DataFrame, players: pd.DataF
         .merge(ratings
             .loc[:, ['player_id', 'R']]
             .add_suffix('_1')
-            , how='left', on=['player_id_1'], validate='many_to_one'
+            , how='left', on='player_id_1', validate='many_to_one'
         )
         .merge(ratings
             .loc[:, ['player_id', 'R']]
@@ -274,10 +274,10 @@ def normalize_games(games: pd.DataFrame, events: pd.DataFrame, players: pd.DataF
 def main() -> None:
     # Complete Kleier archive as of 2019-12-15
     # now = pd.to_datetime('2019-12-15')
-    # max_eid, max_pid = 670, 2970
-    # get_events.main(max_eid)
-    # get_players.main(max_pid)
-    # get_ratings.main(max_eid, max_pid)
+    max_eid, max_pid = 670, 2970
+    get_events.main(max_eid)
+    get_players.main(max_pid)
+    get_ratings.main(max_eid, max_pid)
 
     events                  = kleier.load_dataset('events'   ).pipe(fmt_events.format_events   )
     groups                  = kleier.load_dataset('groups'   ).pipe(fmt_events.format_groups   )

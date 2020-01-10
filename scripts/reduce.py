@@ -12,7 +12,7 @@ def reduce_results_to_games(results: pd.DataFrame, games: pd.DataFrame) -> bool:
         .merge(groups
             .loc[:, ['id', 'event_id']]
             .rename(columns={'id': 'group_id'})
-            , how='left', on=['group_id'], validate='many_to_one'
+            , how='left', on='group_id', validate='many_to_one'
         )
         .loc[:, ['event_id', 'player_id_1', 'player_id_2', 'W', 'unplayed']]
         .sort_values(['event_id', 'player_id_1', 'player_id_2', 'W', 'unplayed'])

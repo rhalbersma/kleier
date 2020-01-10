@@ -57,7 +57,7 @@ def _parse_results_from(results_from: str) -> Tuple[str]:
 def _parse_unplayed_games(M: int, N: int, table: bs4.element.Tag) -> pd.DataFrame:
     return pd.DataFrame(
         data = [[
-                td.has_attr('class') and td['class'][0] == 'unplayed' or not td.text
+                not td.text or td.has_attr('class') and td['class'][0] == 'unplayed'
                 for td in tr.find_all('td')[-N:]
             ]
             for tr in table.find_all('tr')[4:4+M]

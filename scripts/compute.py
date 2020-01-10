@@ -48,7 +48,7 @@ def significance_compare(events: pd.DataFrame, games: pd.DataFrame, lists: pd.Da
 def tot_games_compute(results: pd.DataFrame) -> pd.DataFrame:
     return (results
         .query('not unplayed')
-        .groupby(['player_id_1'])
+        .groupby('player_id_1')
         .size()
         .to_frame('tot_games')
         .reset_index()
@@ -76,7 +76,7 @@ def eff_games_compute(results: pd.DataFrame, groups: pd.DataFrame, lists: pd.Dat
         .merge(groups
             .loc[:, ['id', 'event_id']]
             .rename(columns={'id': 'group_id'})
-            , how='left', on=['group_id'], validate='many_to_one'
+            , how='left', on='group_id', validate='many_to_one'
         )
         .drop(columns=['group_id'])
         .merge(lists)
@@ -104,7 +104,7 @@ def eff_games_compute(results: pd.DataFrame, groups: pd.DataFrame, lists: pd.Dat
         .apply(lambda p: p.assign(event_nr = lambda x: x.event_id.rank(method='dense')))
         .assign(smooth = lambda x: np.where(x.event_nr == 1.0, 0.2, np.where(x.event_nr == 2.0, 0.5, 1.0)))
         .assign(smooth_sig = lambda x: x.smooth * x.significance)
-        .groupby(['player_id_1'])
+        .groupby('player_id_1')
         .agg(eff_games=('smooth_sig', 'sum'))
         .assign(eff_games = lambda x: np.round(x.eff_games, 3))
         .reset_index()
