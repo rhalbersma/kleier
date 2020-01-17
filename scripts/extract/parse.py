@@ -1,32 +1,19 @@
-#!/usr/bin/env python
-
 #          Copyright Rein Halbersma 2019-2020.
 # Distributed under the Boost Software License, Version 1.0.
 #    (See accompanying file LICENSE_1_0.txt or copy at
 #          http://www.boost.org/LICENSE_1_0.txt)
 
 import re
-import sys
 
 import bs4
 import numpy as np
 import pandas as pd
-import requests
 from typing import Sequence, Tuple
 
-import kleier.utils
+def _results_from(s: str) -> Tuple[str]:
+    return re.split(r'(^.*)\s?(\d{4}-\d{2}-\d{2})\s(.*$)', s)[1:-1]
 
-def _read_tourn_table(eid: int, gid: int, table: bs4.element.Tag) -> pd.DataFrame:
-    return (pd
-        .read_html(str(table), header=[2, 3])[0]
-        .assign(
-            eid = eid,
-            gid = gid
-        )
-        .pipe(lambda x: x.loc[:, x.columns.to_list()[-2:] + x.columns.to_list()[:-2]])
-    )
-
-def _parse_group(eid: int, gid: int, table_header_rows: bs4.element.ResultSet) -> pd.DataFrame:
+def _group(eid: int, gid: int, table_header_rows: bs4.element.ResultSet) -> pd.DataFrame:
     name_place_date = (table_header_rows[0]
         .find('th')
         .text
@@ -51,10 +38,18 @@ def _parse_group(eid: int, gid: int, table_header_rows: bs4.element.ResultSet) -
         columns=['eid', 'gid', 'name', 'place', 'date', 'group', 'score_W', 'score_D', 'score_L']
     )
 
-def _parse_results_from(results_from: str) -> Tuple[str]:
-    return re.split(r'(^.*)\s?(\d{4}-\d{2}-\d{2})\s(.*$)', results_from)[1:-1]
+def _cross_table(eid: int, gid: int, table: bs4.element.Tag) -> pd.DataFrame:
+    return (pd
+        .read_html(str(table), header=[2, 3])[0]
+        .assign(
+            eid = eid,
+            gid = gid
+        )
+        # make 'eid' and 'gid' the first two columns
+        .pipe(lambda x: x.loc[:, x.columns.to_list()[-2:] + x.columns.to_list()[:-2]])
+    )
 
-def _parse_unplayed_games(M: int, N: int, table: bs4.element.Tag) -> pd.DataFrame:
+def _unplayed_games(M: int, N: int, table: bs4.element.Tag) -> pd.DataFrame:
     return pd.DataFrame(
         data = [[
                 not td.text or td.has_attr('class') and td['class'][0] == 'unplayed'
@@ -68,12 +63,12 @@ def _parse_unplayed_games(M: int, N: int, table: bs4.element.Tag) -> pd.DataFram
         ])
     )
 
-def _standings(tourn_table: pd.DataFrame) -> pd.DataFrame:
-    return tourn_table.drop(list(tourn_table.filter(regex='Results|Unplayed')), axis='columns')
+def _standings(cross_table: pd.DataFrame) -> pd.DataFrame:
+    return cross_table.drop(list(cross_table.filter(regex='Results|Unplayed')), axis='columns')
 
-def _results(tourn_table: pd.DataFrame) -> pd.DataFrame:
+def _results(cross_table: pd.DataFrame) -> pd.DataFrame:
     return (pd
-        .wide_to_long(tourn_table
+        .wide_to_long(cross_table
             .filter(regex='eid|gid|#|Results|Unplayed')
             .pipe(lambda x: x
                 .set_axis(x
@@ -88,22 +83,22 @@ def _results(tourn_table: pd.DataFrame) -> pd.DataFrame:
         .reset_index()
     )
 
-def _parse_tourn_table(eid: int, gid: int, table: bs4.element.Tag) -> Tuple[pd.DataFrame]:
-    tourn_table = _read_tourn_table(eid, gid, table)
-    last_row = tourn_table.tail(1)
+def _group_standings_results(eid: int, gid: int, table: bs4.element.Tag) -> Tuple[pd.DataFrame]:
+    cross_table = _cross_table(eid, gid, table)
+    last_row = cross_table.tail(1)
     results_from = str(last_row.iloc[0, 2])
     sep = 'Results from: '
     if results_from.startswith(sep):
-        tourn_table.drop(last_row.index, inplace=True)
-        file_from, file_date, file_name = _parse_results_from(results_from.split(sep)[1])
+        cross_table.drop(last_row.index, inplace=True)
+        file_from, file_date, file_name = _results_from(results_from.split(sep)[1])
     else:
         file_from, file_date, file_name = [ np.nan ] * 3
     # Elo (1978) notation:
     # M = number of players
     # N = number of games (here: number of rounds)
-    M, N = tourn_table.filter(regex='Results').shape
-    tourn_table = tourn_table.join(_parse_unplayed_games(M, N, table))
-    group = (_parse_group(eid, gid, table.find('thead').find_all('tr'))
+    M, N = cross_table.filter(regex='Results').shape
+    cross_table = cross_table.join(_unplayed_games(M, N, table))
+    group = (_group(eid, gid, table.find('thead').find_all('tr'))
         .assign(
             M = M,
             N = N,
@@ -112,20 +107,41 @@ def _parse_tourn_table(eid: int, gid: int, table: bs4.element.Tag) -> Tuple[pd.D
             file_name = file_name
         )
     )
-    standings = _standings(tourn_table)
-    results = _results(tourn_table)
+    standings = _standings(cross_table)
+    results = _results(cross_table)
     return group, standings, results
 
-def _get_tourn_table(eid: int) -> Tuple[pd.DataFrame]:
-    assert 1 <= eid
-    url = f'https://www.kleier.net/cgi/tourn_table.php?eid={eid}'
-    response = requests.get(url)
-    assert response.status_code == 200
-    soup = bs4.BeautifulSoup(response.content, 'lxml')
-    table_seq = soup.find_all('table', {'summary': 'Stratego Tournament Cross-Table'})
+def _name_from_header(header: bs4.element.Tag) -> str:
+    return header.text.split('History of ')[1]
+
+def _name_from_table(table: bs4.element.Tag) -> str:
+    return table.attrs['summary'].split('Game Balance of ')[1]
+
+def _name(pid: int, name: str) -> pd.DataFrame:
+    return pd.DataFrame(
+        data   =[(pid,   name)],
+        columns=['pid', 'name']
+    )
+
+def _games(pid: int, table: bs4.element.Tag) -> pd.DataFrame:
+    return (pd
+        .read_html(str(table), header=[1, 2])[0]
+        .assign(
+            pid = pid
+        )
+        .pipe(lambda x: x.loc[:, x.columns.to_list()[-1:] + x.columns.to_list()[:-1]])
+        .assign(Unplayed = pd.Series([
+            td['class'][0] == 'unplayed' if td.has_attr('class') else np.nan
+            for tr in table.find_all('tr')[3:]
+            for td in tr.find_all('td')[-1:]
+        ]))
+    )
+
+def tourn_table(soup: bs4.BeautifulSoup, eid: int) -> Tuple[pd.DataFrame]:
+    cross_table_seq = soup.find_all('table', {'summary': 'Stratego Tournament Cross-Table'})
     remarks = pd.DataFrame(
         data=[
-            (table_seq.index(remarks.find_previous('table')), remarks.text)
+            (cross_table_seq.index(remarks.find_previous('table')), remarks.text)
             for remarks in soup.find_all('pre')
         ],
         columns=['gid', 'remarks']
@@ -133,8 +149,8 @@ def _get_tourn_table(eid: int) -> Tuple[pd.DataFrame]:
     groups, standings, results = tuple(
         pd.concat(list(t), ignore_index=True, sort=False)
         for t in zip(*[
-            _parse_tourn_table(eid, gid, table)
-            for gid, table in enumerate(table_seq)
+            _group_standings_results(eid, gid, cross_table)
+            for gid, cross_table in enumerate(cross_table_seq)
         ])
     )
     event = (groups
@@ -148,20 +164,18 @@ def _get_tourn_table(eid: int) -> Tuple[pd.DataFrame]:
     )
     return event, groups, standings, results
 
-def _get_all_tourn_tables(eid_seq: Sequence[int]) -> Tuple[pd.DataFrame]:
-    return tuple(
-        pd.concat(list(t), ignore_index=True, sort=False)
-        for t in zip(*[
-            _get_tourn_table(eid)
-            for eid in eid_seq
-        ])
-    )
+def player(soup: bs4.BeautifulSoup, pid: int) -> Tuple[pd.DataFrame]:
+    header = soup.find('h1')
+    table = soup.find('table')
+    assert header or not table
+    name_from_header = _name_from_header(header) if header else np.nan
+    if table:
+        assert name_from_header == _name_from_table(table)
+    name = _name(pid, name_from_header)
+    games = _games(pid, table) if table else None
+    return name, games
 
-def _get_tournaments_byplace() -> pd.DataFrame:
-    url = 'https://www.kleier.net/tournaments/byplace/index.php'
-    response = requests.get(url)
-    assert response.status_code == 200
-    soup = bs4.BeautifulSoup(response.content, 'lxml')
+def tournaments_byplace(soup: bs4.BeautifulSoup) -> pd.DataFrame:
     return (pd
         .DataFrame(
             data=[
@@ -175,16 +189,6 @@ def _get_tournaments_byplace() -> pd.DataFrame:
         .reset_index(drop=True)
     )
 
-def main(max_eid: int) -> Tuple[pd.DataFrame]:
-    events, groups, standings, results = _get_all_tourn_tables(range(1, 1 + max_eid))
-    assert events.equals(events.sort_values(['date', 'eid']))
-    countries = _get_tournaments_byplace()
-    events = pd.merge(events, countries, validate='one_to_one')
-    kleier.utils._save_dataset(events, 'events')
-    kleier.utils._save_dataset(groups, 'groups')
-    kleier.utils._save_dataset(standings, 'standings')
-    kleier.utils._save_dataset(results, 'results')
-    return events, groups, standings, results
-
-if __name__ == '__main__':
-    sys.exit(main(int(sys.argv[1])))
+def rat_table(soup: bs4.BeautifulSoup) -> pd.DataFrame:
+    table = soup.find('table')
+    return pd.read_html(str(table))[0]

@@ -10,7 +10,7 @@ import sys
 
 import requests
 
-def wget(prefix: str, file: str, *urls) -> None:
+def _wget(prefix: str, file: str, *urls) -> None:
     """
     wget -P prefix -O file urls
     """
@@ -24,25 +24,24 @@ def wget(prefix: str, file: str, *urls) -> None:
 def tourn_table(prefix: str, eid: int) -> None:
     file = f'tourn_table-{eid}.html'
     url = f'https://www.kleier.net/cgi/tourn_table.php?eid={eid}'
-    wget(prefix, file, url)
-
-def tournaments_byplace(prefix: str) -> None:
-    file = 'tournaments_byplace.html'
-    url = 'https://www.kleier.net/tournaments/byplace/index.php'
-    wget(prefix, file, url)
+    _wget(prefix, file, url)
 
 def player(prefix: str, pid: int) -> None:
     file = f'player-{pid}.html'
     url = f'https://www.kleier.net/cgi/player.php?pid={pid}'
-    wget(prefix, file, url)
+    _wget(prefix, file, url)
+
+def tournaments_byplace(prefix: str) -> None:
+    file = 'tournaments_byplace.html'
+    url = 'https://www.kleier.net/tournaments/byplace/index.php'
+    _wget(prefix, file, url)
 
 def rat_table(prefix: str, min=-9999, max=9999, from_='A', till='[', games=1, ntourn=12, items=2500, sortby='r', colsel=0, nat='all') -> None:
     file = 'rat_table.html'
     url = f'https://www.kleier.net/cgi/rat_table.php?min={min}&max={max}&from={from_}&till={till}&games={games}&ntourn={ntourn}&items={items}&sortby={sortby}&colsel={colsel}&nat[]={nat}'
-    wget(prefix, file, url)
+    _wget(prefix, file, url)
 
-def main(max_eid: int, max_pid: int) -> None:
-    prefix = 'data/html'
+def main(prefix: str, max_eid: int, max_pid: int) -> None:
     for eid in range(1, 1 + max_eid):
         tourn_table(prefix, eid)
     tournaments_byplace(prefix)
@@ -51,4 +50,4 @@ def main(max_eid: int, max_pid: int) -> None:
     rat_table(prefix, ntourn=max_eid, items=max_eid*max_pid)
 
 if __name__ == '__main__':
-    sys.exit(main(int(sys.argv[1]), int(sys.argv[2])))
+    sys.exit(main(str(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3])))
