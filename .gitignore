@@ -5,8 +5,7 @@
 # Python generated
 build/
 dist/
-scripts/__pycache__
-scripts/data
 src/*.egg-info
-src/kleier/__pycache__
+*__pycache__
+src/scripts/data
 typescript

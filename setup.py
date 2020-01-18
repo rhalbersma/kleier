@@ -19,8 +19,15 @@ setup(
     package_data={
         'kleier': ['data/*.pkl'],
     },
+    entry_points = {
+        'console_scripts': [
+            'kleier=scripts.cli:kleier',
+            'download=scripts.cli:download'
+            'pickle=scripts.cli:pickl'
+        ],
+    },
     install_requires=[
-        'autograd', 'bs4', 'lxml', 'matplotlib', 'numpy', 'pandas', 'requests', 'scipy', 'seaborn'
+        'bs4', 'click', 'jax', 'jaxlib', 'lxml', 'numpy', 'pandas', 'requests', 'scipy'
     ],
     python_requires='>=3.6',
     classifiers=[

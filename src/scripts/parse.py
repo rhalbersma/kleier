@@ -10,6 +10,36 @@ import numpy as np
 import pandas as pd
 from typing import Sequence, Tuple
 
+# Helper functions for _player(pid, soup).
+
+def _name_from_header(header: bs4.element.Tag) -> str:
+    return header.text.split('History of ')[1]
+
+def _name_from_table(table: bs4.element.Tag) -> str:
+    return table.attrs['summary'].split('Game Balance of ')[1]
+
+def _name(pid: int, name: str) -> pd.DataFrame:
+    return pd.DataFrame(
+        data   =[(pid,   name)],
+        columns=['pid', 'name']
+    )
+
+def _games(pid: int, table: bs4.element.Tag) -> pd.DataFrame:
+    return (pd
+        .read_html(str(table), header=[1, 2])[0]
+        .assign(
+            pid = pid
+        )
+        .pipe(lambda x: x.loc[:, x.columns.to_list()[-1:] + x.columns.to_list()[:-1]])
+        .assign(Unplayed = pd.Series([
+            td['class'][0] == 'unplayed' if td.has_attr('class') else np.nan
+            for tr in table.find_all('tr')[3:]
+            for td in tr.find_all('td')[-1:]
+        ]))
+    )
+
+# Helper functions for _tourn_table(eid, soup).
+
 def _results_from(s: str) -> Tuple[str]:
     return re.split(r'(^.*)\s?(\d{4}-\d{2}-\d{2})\s(.*$)', s)[1:-1]
 
@@ -111,33 +141,24 @@ def _group_standings_results(eid: int, gid: int, table: bs4.element.Tag) -> Tupl
     results = _results(cross_table)
     return group, standings, results
 
-def _name_from_header(header: bs4.element.Tag) -> str:
-    return header.text.split('History of ')[1]
+# Main parsing API: _player, _rat_table, _tourn_table, _tournaments_byplace.
 
-def _name_from_table(table: bs4.element.Tag) -> str:
-    return table.attrs['summary'].split('Game Balance of ')[1]
+def _player(pid: int, soup: bs4.BeautifulSoup) -> Tuple[pd.DataFrame]:
+    header = soup.find('h1')
+    table = soup.find('table')
+    assert header or not table
+    name_from_header = _name_from_header(header) if header else np.nan
+    if table:
+        assert name_from_header == _name_from_table(table)
+    name = _name(pid, name_from_header)
+    games = _games(pid, table) if table else None
+    return name, games
 
-def _name(pid: int, name: str) -> pd.DataFrame:
-    return pd.DataFrame(
-        data   =[(pid,   name)],
-        columns=['pid', 'name']
-    )
+def _rat_table(soup: bs4.BeautifulSoup) -> pd.DataFrame:
+    table = soup.find('table', {'summary': 'Stratego Rating'})
+    return pd.read_html(str(table))[0]
 
-def _games(pid: int, table: bs4.element.Tag) -> pd.DataFrame:
-    return (pd
-        .read_html(str(table), header=[1, 2])[0]
-        .assign(
-            pid = pid
-        )
-        .pipe(lambda x: x.loc[:, x.columns.to_list()[-1:] + x.columns.to_list()[:-1]])
-        .assign(Unplayed = pd.Series([
-            td['class'][0] == 'unplayed' if td.has_attr('class') else np.nan
-            for tr in table.find_all('tr')[3:]
-            for td in tr.find_all('td')[-1:]
-        ]))
-    )
-
-def tourn_table(soup: bs4.BeautifulSoup, eid: int) -> Tuple[pd.DataFrame]:
+def _tourn_table(eid: int, soup: bs4.BeautifulSoup) -> Tuple[pd.DataFrame]:
     cross_table_seq = soup.find_all('table', {'summary': 'Stratego Tournament Cross-Table'})
     remarks = pd.DataFrame(
         data=[
@@ -164,18 +185,7 @@ def tourn_table(soup: bs4.BeautifulSoup, eid: int) -> Tuple[pd.DataFrame]:
     )
     return event, groups, standings, results
 
-def player(soup: bs4.BeautifulSoup, pid: int) -> Tuple[pd.DataFrame]:
-    header = soup.find('h1')
-    table = soup.find('table')
-    assert header or not table
-    name_from_header = _name_from_header(header) if header else np.nan
-    if table:
-        assert name_from_header == _name_from_table(table)
-    name = _name(pid, name_from_header)
-    games = _games(pid, table) if table else None
-    return name, games
-
-def tournaments_byplace(soup: bs4.BeautifulSoup) -> pd.DataFrame:
+def _tournaments_byplace(soup: bs4.BeautifulSoup) -> pd.DataFrame:
     return (pd
         .DataFrame(
             data=[
@@ -188,7 +198,3 @@ def tournaments_byplace(soup: bs4.BeautifulSoup) -> pd.DataFrame:
         .sort_values('eid')
         .reset_index(drop=True)
     )
-
-def rat_table(soup: bs4.BeautifulSoup) -> pd.DataFrame:
-    table = soup.find('table')
-    return pd.read_html(str(table))[0]
