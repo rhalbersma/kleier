@@ -22,7 +22,7 @@ def kleier():
 @click.confirmation_option(
     '-y', '--yes',
     hidden=True,
-    prompt='The database takes about 15 minutes to download, and contains more than 3600 files, totalling 160 Mb on disk. Do you want to continue?'
+    prompt='The database takes ~15 minutes to download, contains ~3600 files, totalling ~160 Mb on disk. Do you want to continue?'
 )
 @click.option(
     '-H', '--html-path',

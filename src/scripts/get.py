@@ -16,21 +16,21 @@ def _get(directory_prefix: str, output_document: str, *urls) -> None:
             dst.write(response.content)
 
 def _player(pid: int, path: str) -> None:
-    filename = f'player-{pid}.html'
+    file = f'player-{pid}.html'
     url = f'https://www.kleier.net/cgi/player.php?pid={pid}'
-    _get(path, filename, url)
+    _get(path, file, url)
 
 def _rat_table(path: str, min=-9999, max=9999, from_='A', till='[', games=1, ntourn=12, items=2500, sortby='r', colsel=0, nat='all') -> None:
-    filename = 'rat_table.html'
+    file = 'rat_table.html'
     url = f'https://www.kleier.net/cgi/rat_table.php?min={min}&max={max}&from={from_}&till={till}&games={games}&ntourn={ntourn}&items={items}&sortby={sortby}&colsel={colsel}&nat[]={nat}'
-    _get(path, filename, url)
+    _get(path, file, url)
 
 def _tourn_table(eid: int, path:str) -> None:
-    filename = f'tourn_table-{eid}.html'
+    file = f'tourn_table-{eid}.html'
     url = f'https://www.kleier.net/cgi/tourn_table.php?eid={eid}'
-    _get(path, filename, url)
+    _get(path, file, url)
 
 def _tournaments_byplace(path: str) -> None:
-    filename = 'tournaments_byplace.html'
+    file = 'tournaments_byplace.html'
     url = 'https://www.kleier.net/tournaments/byplace/index.php'
-    _get(path, filename, url)
+    _get(path, file, url)
