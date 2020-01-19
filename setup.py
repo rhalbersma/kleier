@@ -23,7 +23,7 @@ setup(
         'console_scripts': [
             'kleier=scripts.cli:kleier',
             'download=scripts.cli:download'
-            'pickle=scripts.cli:pickl'
+            'pickle=scripts.cli:pickle'
         ],
     },
     install_requires=[

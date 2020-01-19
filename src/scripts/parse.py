@@ -190,7 +190,7 @@ def _tournaments_byplace(soup: bs4.BeautifulSoup) -> pd.DataFrame:
         .DataFrame(
             data=[
                 (int(eid.get('href').split('=')[1]), nat.find('span').text)
-                for nat in soup.find('ul', {'class': 'nat'}).find_all('li', recursive = False)
+                for nat in soup.find('ul', {'class': 'nat'}).find_all('li', recursive=False)
                 for eid in nat.find_all('a')
             ],
             columns=['eid', 'nat']

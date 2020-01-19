@@ -13,9 +13,6 @@ import kleier.utils
 import fmt_events
 import fmt_players
 import fmt_ratings
-import get_events
-import get_players
-import get_ratings
 
 def _has_consistent_index(df: pd.DataFrame) -> bool:
     return (

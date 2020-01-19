@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!--
+$Source: /home/cvsroot/elo/www/tournaments/byplace/index.php,v $
+$Revision: 1.2 $
+$Date: 2015/09/24 12:04:02 $
+$Author: h $
+$State: Exp $-->
+<title>Tournaments Listed by Places</title>
+<meta name=viewport content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<style>
+/* $Source: /home/cvsroot/elo/www/css/site.css,v $
+   $Revision: 5.2 $
+   $Date: 2015/12/04 10:47:42 $
+   $Author: h $
+   $State: Exp $
+
+For "overflow: auto;" See: http://www.w3schools.com/css/tryit.asp?filename=trycss_layout_clearfix
+*/
+
+@media print { table.next { page-break-before: always; } }
+
+body      { color: #000; background-color: #fadfad; }                        /* peach yellow, tried peru (#cd853f) which was kind to dark though */
+table     { border-collapse: collapse; }
+div,span,li { padding: 0ex; margin: 0ex; }
+div       { background-color: #ffefd5; color: inherit; }  /* papaya whip */
+div.box   { padding: 0.2ex 0px 1ex 2ex; width: auto; overflow: visible; } /* overflow: auto; } */
+th.l      { text-align: left; }
+img       { margin: 1em; }
+object    { background-color: #fff; padding: 1em; border: 1px solid black; }
+p.unfloat { clear: left; }
+
+div.help                     { float: left; padding: 0em; margin: 0em; background-color: #ffefd5; width: 440px; }
+div.help img                 { border: 1px solid black; background-color: #fff; margin: 0 1em 1em 0; }
+.announced dt                { font-size: 75%; }
+.announced dd                { padding: 0.4em 1.5em; margin: 1em 10em; }
+dd:nth-last-of-type(n+2)     { margin-bottom: 1ex; }   /* spacing INSIDE dl */
+
+table,object,img,dd          { box-shadow: 5px 5px 5px #f7cf84; } /* darker kind of peach yellow */
+table.noshadow               { box-shadow: none; }
+
+img.val, img.pat             { border: 0; }
+img.val                      { width: 88px; height: 31px; }
+div.date                     { padding: 0; margin: 0; float: left; height: 15em; } /* require 15em height for IE 6.0 */
+table.date                   { margin: 1em; text-align: center; }
+table.date, table.date td,
+table.date td                { background-color: white; }
+table.date thead td          { background-color: inherit; }
+td.prev, td.date, td.next    { width: 1.4em; height: 1.4em; }
+td.head                      { padding: 0.1em 0em; color: inherit; }
+table.date a                 { text-decoration: none; color: inherit; }
+td.prev                      { text-align: left; }
+td.next                      { text-align: right; }
+td.month, td.head            { font-size: 75%; }
+table.date td.hidden         { color: #aaa; }
+td.next, td.today, td.prev   { font-weight: bold; }
+tr.date td.date:hover,
+tr.date td.today:hover,
+tr.date td.next:hover,
+tr.date td.prev:hover        { background-color: #88f; font-weight: bold; color: inherit; }
+span.units                   { word-spacing: -.25ex; }
+span.yell                    { font-weight: bold; }
+span.concept                 { font-style: oblique; font-family: monospace; text-transform: capitalize; }
+span.button,span.verbatim    { white-space: nowrap; font-family: monospace; font-size: 100%; padding: 0.1ex 0.4ex; margin-top: 3em; }
+span.button,span.verbatim,
+.announced dd                { border: 1px solid #fadfad; background-color: rgba(255, 255, 255, 0.8); }
+
+html>body                    { counter-reset: hlevel1; }
+h1.num:before                { content: counter(hlevel1) " "; counter-increment: hlevel1; }
+h1.num                       { counter-reset: hlevel2; font-size: 117%; }
+h2.num:before                { content: counter(hlevel1) "." counter(hlevel2) " "; counter-increment: hlevel2; }
+h2.num                       { counter-reset: hlevel3; font-size: 100%; }
+h3.num:before                { content: counter(hlevel1) "." counter(hlevel2) "." counter(hlevel3) " "; counter-increment: hlevel3; }
+h3.num                       { counter-reset: hlevel4; font-size: 83%; }
+h4.num:before                { content: counter(hlevel1) "." counter(hlevel2) "." counter(hlevel3) "." counter(hlevel4) " "; counter-increment: hlevel4; }
+
+.helptable                   { background-color: rgba(255, 255, 255, 0.5); caption-side: top; text-align: left; margin: 1em; }
+.helptable th,.helptable td  { padding-left: 1em; padding-right: 0.3em; line-height: 130%; border: 1px solid #f4be5a; } /* even darker peach yellow */
+.helptable th                { padding-top: 0.3em; padding-bottom: 0.3em; vertical-align: middle; }
+.helptable td                { padding-top: 0.1em; padding-bottom: 0.1em; vertical-align: top; }
+.helptable caption           { text-align: left; }
+.helptable caption > span    { display: inline-block; text-align: left; white-space: nowrap; font-weight: bold; margin: 0.5em; margin-right: 0; }
+.helptable span.verbatim     { font-size: larger; }
+/* $Source: /home/cvsroot/elo/www/css/navigation.css,v $
+   $Revision: 5.1 $
+   $Date: 2015/12/04 10:41:16 $
+   $Author: h $
+   $State: Exp $
+
+Concept of hiding the submenu from http://www.devinrolsen.com/pure-css-vertical-menu/
+*/
+
+h1                                  { font-weight: bold; font-size: 150%; clear: left; }
+
+table.date                          { border-radius: 4px; }
+table.date td                       { vertical-align: baseline; padding: 0.4ex 0.15ex 0ex 0.15ex; }
+table.date td.month                 { padding: 1ex 0ex; }
+table.date td:first-child           { padding-left: 1ex; }
+table.date td:last-child            { padding-right: 1ex; }
+table.date tr:last-child td         { padding-bottom: 1ex; }
+table.date td.event                 { background-color: #888; font-weight: bold; border-radius: 4px; }
+table.date td.event a:hover,
+table.date td.event:hover           { color: #fff; background: #013; }
+
+div.separator                       { margin-top: 1em; }
+
+div.navi,div.widenavi               { font-weight: bold; font-size: small; margin-left: 0.5em; }
+.navi ul,.widenavi ul               { margin: 0px; padding: 0px; }
+.widenavi .navi li                  { display: inline-block; }
+.navi li                            { list-style: none; line-height: 2em; color: #000; }
+
+.navi li,.navi button               { background: linear-gradient(to right, #aab 2%, #ccd 3%); border-radius: 4px; box-shadow: 4px 4px 4px #f7cf84; border: 1px solid #888; }
+.navi li:nth-child(n+2)             { border-top-width: 0px; }
+.navi li:hover,.navi button:hover   { background: linear-gradient(to right, #fe0 2%, #013 3%); color: #fff; position: relative; }
+.navi li,.navi button,
+.navi li:hover,.navi button:hover   { background-size: 60em auto; background-repeat: no-repeat; }
+.navi li:active,.navi button:active { box-shadow: -6px -6px 6px #f7cf84; }
+.navi a,.navi button                { cursor: pointer; }
+.navi a                             { text-decoration: none; color: inherit; }
+.navi span                          { display: inline-block; text-indent: 2.5em; }
+.navi li,.navi button               { height: 2em; }
+
+div.navi                            { width: 28em; }
+.navi span,.navi button             { width: 28em; }
+
+ul.nat,.nat span                    { width: 6em; }
+li:hover .place                     { left: 6em; }
+.navi ul.place span                 { width: 16em; }
+li:hover > .date                    { left: 16em; }
+.navi ul.date span                  { width: 10em; }
+
+ul.topser,.topser span              { width: 36em; }
+li:hover .series                    { left: 36em; }
+.navi ul.series span                { width: 40em; }
+
+.navi button                        { vertical-align: middle; font-family: inherit; font-weight: inherit; font-size: inherit; color: inherit; text-align: left; padding: 0px; }
+ul.series,ul.place,ul.date          { display: none; }
+li:hover .place,
+li:hover > .date,li:hover .series   { display: block; position: absolute; top: 0.1em; }
+ul.series li,ul.place li            { float: left; }
+</style>
+</head><body>
+<div class="box">
+<h1>Tournaments Listed by Places</h1>
+<div class="navi"> <ul><li><a href="../index.php"><span>Up</span></a></li>
+<li><a href="../../index.php"><span>Home</span></a></li>
+ </ul></div><div class="separator"><p></p>
+<div class="navi"><ul class="nat"><li><span>NL</span><ul class="place">
+<li><span>Alkmaar</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=85"><span>2000-09-16</span></a></li>
+</ul><li><span>Amsterdam</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=29"><span>1998-09-12</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=53"><span>1999-09-18</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=307"><span>2008-09-13</span></a></li>
+</ul><li><span>Antwerpen</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=542"><span>2016-12-03</span></a></li>
+</ul><li><span>Arcen</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=116"><span>2001-11-03</span></a></li>
+</ul><li><span>Arnhem</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=11"><span>1997-04-12</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=34"><span>1999-01-10</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=45"><span>1999-04-25</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=71"><span>2000-04-16</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=94"><span>2000-12-23</span></a></li>
+</ul><li><span>Assen</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=88"><span>2000-10-15</span></a></li>
+</ul><li><span>Barendrecht</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=155"><span>2002-12-08</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=186"><span>2003-12-07</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=210"><span>2004-12-11</span></a></li>
+</ul><li><span>Boxtel</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=224"><span>2005-07-10</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=254"><span>2006-07-09</span></a></li>
+</ul><li><span>Breda</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=13"><span>1997-06-14</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=27"><span>1998-08-15</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=54"><span>1999-09-25</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=87"><span>2000-09-23</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=103"><span>2001-04-21</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=144"><span>2002-06-22</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=172"><span>2003-06-14</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=190"><span>2004-03-13</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=216"><span>2005-03-12</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=242"><span>2006-03-11</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=268"><span>2007-03-24</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=290"><span>2008-03-09</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=311"><span>2008-10-26</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=321"><span>2009-03-27</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=342"><span>2009-10-10</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=356"><span>2010-05-09</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=368"><span>2010-10-24</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=390"><span>2011-09-11</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=439"><span>2013-06-29</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=461"><span>2014-06-07</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=475"><span>2014-11-22</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=485"><span>2015-03-21</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=524"><span>2016-06-11</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=534"><span>2016-10-22</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=560"><span>2017-06-24</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=611"><span>2018-06-23</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=662"><span>2019-10-12</span></a></li>
+</ul><li><span>Delft</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=6"><span>1996-03-24</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=206"><span>2004-11-06</span></a></li>
+</ul><li><span>Den Bosch</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=180"><span>2003-09-28</span></a></li>
+</ul><li><span>Den Haag</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=24"><span>1998-05-15</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=46"><span>1999-05-08</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=72"><span>2000-04-24</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=404"><span>2012-04-14</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=434"><span>2013-04-20</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=458"><span>2014-04-19</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=493"><span>2015-06-20</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=519"><span>2016-04-23</span></a></li>
+</ul><li><span>Deventer</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=2"><span>1995-02-19</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=10"><span>1997-03-08</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=18"><span>1998-01-11</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=36"><span>1999-02-21</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=62"><span>2000-02-06</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=284"><span>2007-11-03</span></a></li>
+</ul><li><span>Ede</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=325"><span>2009-04-10</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=352"><span>2010-03-27</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=386"><span>2011-06-18</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=414"><span>2012-09-29</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=447"><span>2013-09-29</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=469"><span>2014-09-20</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=499"><span>2015-09-26</span></a></li>
+</ul><li><span>Eerde</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=1"><span>1994-03-26</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=127"><span>2002-02-23</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=425"><span>2013-01-26</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=545"><span>2017-01-22</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=635"><span>2019-01-13</span></a></li>
+</ul><li><span>Eindhoven</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=22"><span>1998-03-15</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=42"><span>1999-03-28</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=67"><span>2000-03-26</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=262"><span>2006-10-28</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=649"><span>2019-06-08</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=669"><span>2019-11-30</span></a></li>
+</ul><li><span>Enschede</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=350"><span>2010-02-27</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=377"><span>2011-02-26</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=400"><span>2012-02-25</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=427"><span>2013-02-23</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=455"><span>2014-02-22</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=483"><span>2015-02-28</span></a></li>
+</ul><li><span>Groningen</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=21"><span>1998-03-07</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=43"><span>1999-04-10</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=69"><span>2000-04-08</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=132"><span>2002-04-13</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=162"><span>2003-03-29</span></a></li>
+</ul><li><span>Haarlem</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=340"><span>2009-09-19</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=364"><span>2010-09-18</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=384"><span>2011-05-21</span></a></li>
+</ul><li><span>Haastrecht</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=410"><span>2012-08-25</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=411"><span>2012-08-26</span></a></li>
+</ul><li><span>Heerlen</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=16"><span>1997-09-20</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=30"><span>1998-09-30</span></a></li>
+</ul><li><span>Heino</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=80"><span>2000-06-24</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=136"><span>2002-04-27</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=181"><span>2003-10-05</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=194"><span>2004-05-01</span></a></li>
+</ul><li><span>Helmond</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=163"><span>2003-04-05</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=205"><span>2004-10-16</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=229"><span>2005-10-01</span></a></li>
+</ul><li><span>Hoogeveen</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=56"><span>1999-10-17</span></a></li>
+</ul><li><span>Houten</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=343"><span>2009-11-14</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=372"><span>2010-11-27</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=395"><span>2011-11-05</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=420"><span>2012-11-10</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=452"><span>2013-11-09</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=474"><span>2014-11-15</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=504"><span>2015-11-07</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=535"><span>2016-11-05</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=575"><span>2017-11-04</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=624"><span>2018-11-03</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=664"><span>2019-11-02</span></a></li>
+</ul><li><span>Leeuwarden</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=15"><span>1997-09-07</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=23"><span>1998-03-28</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=39"><span>1999-03-07</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=63"><span>2000-02-27</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=114"><span>2001-09-23</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=150"><span>2002-10-27</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=515"><span>2016-02-27</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=546"><span>2017-02-18</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=588"><span>2018-02-17</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=636"><span>2019-02-02</span></a></li>
+</ul><li><span>Lelystad</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=50"><span>1999-06-19</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=77"><span>2000-06-03</span></a></li>
+</ul><li><span>Leudsen</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=31"><span>1998-10-01</span></a></li>
+</ul><li><span>Maastricht</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=4"><span>1995-09-09</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=51"><span>1999-08-14</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=83"><span>2000-08-05</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=360"><span>2010-08-14</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=361"><span>2010-08-15</span></a></li>
+</ul><li><span>Middelburg</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=19"><span>1998-01-31</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=35"><span>1999-01-30</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=61"><span>2000-01-29</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=111"><span>2001-07-28</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=124"><span>2002-02-16</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=182"><span>2003-10-11</span></a></li>
+</ul><li><span>Naarden</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=617"><span>2018-08-25</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=618"><span>2018-08-26</span></a></li>
+</ul><li><span>Nijmegen</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=3"><span>1995-03-11</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=5"><span>1995-10-08</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=7"><span>1996-06-01</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=9"><span>1997-02-15</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=20"><span>1998-02-21</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=40"><span>1999-03-20</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=64"><span>2000-02-27</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=66"><span>2000-03-18</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=89"><span>2000-11-11</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=104"><span>2001-05-05</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=123"><span>2002-02-03</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=128"><span>2002-03-16</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=167"><span>2003-04-26</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=169"><span>2003-05-11</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=192"><span>2004-04-04</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=227"><span>2005-09-10</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=259"><span>2006-09-09</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=282"><span>2007-09-22</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=294"><span>2008-04-19</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=346"><span>2009-12-12</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=531"><span>2016-10-01</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=568"><span>2017-09-16</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=620"><span>2018-09-29</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=659"><span>2019-09-14</span></a></li>
+</ul><li><span>Olst</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=328"><span>2009-05-24</span></a></li>
+</ul><li><span>Oosterhout</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=319"><span>2009-02-15</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=349"><span>2010-02-07</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=381"><span>2011-04-17</span></a></li>
+</ul><li><span>Rotterdam</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=38"><span>1999-02-28</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=79"><span>2000-06-12</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=115"><span>2001-10-06</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=143"><span>2002-06-08</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=145"><span>2002-08-23</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=146"><span>2002-08-24</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=160"><span>2003-02-22</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=222"><span>2005-06-18</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=233"><span>2005-11-05</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=252"><span>2006-06-17</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=277"><span>2007-06-16</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=300"><span>2008-06-28</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=330"><span>2009-06-27</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=423"><span>2012-12-15</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=454"><span>2013-12-21</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=479"><span>2014-12-20</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=494"><span>2015-07-11</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=510"><span>2015-12-19</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=520"><span>2016-05-07</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=547"><span>2017-03-11</span></a></li>
+</ul><li><span>Schiedam</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=613"><span>2018-07-14</span></a></li>
+</ul><li><span>Sliedrecht</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=551"><span>2017-04-22</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=596"><span>2018-04-14</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=644"><span>2019-04-13</span></a></li>
+</ul><li><span>Tiel</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=8"><span>1996-10-05</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=17"><span>1997-10-04</span></a></li>
+</ul><li><span>Utrecht</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=12"><span>1997-05-31</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=26"><span>1998-06-06</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=48"><span>1999-05-29</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=57"><span>1999-11-06</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=76"><span>2000-05-20</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=107"><span>2001-05-26</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=140"><span>2002-05-25</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=152"><span>2002-11-09</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=170"><span>2003-05-24</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=199"><span>2004-05-29</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=220"><span>2005-05-21</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=249"><span>2006-05-20</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=275"><span>2007-05-19</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=313"><span>2008-11-29</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=572"><span>2017-10-14</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=591"><span>2018-03-17</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=639"><span>2019-03-02</span></a></li>
+</ul><li><span>Venlo</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=97"><span>2001-03-03</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=488"><span>2015-04-25</span></a></li>
+</ul><li><span>Venray</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=108"><span>2001-06-09</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=147"><span>2002-09-15</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=175"><span>2003-08-03</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=261"><span>2006-10-21</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=271"><span>2007-04-28</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=297"><span>2008-05-24</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=316"><span>2008-12-20</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=333"><span>2009-07-25</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=359"><span>2010-06-26</span></a></li>
+</ul><li><span>Wageningen</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=73"><span>2000-05-07</span></a></li>
+</ul><li><span>Zeist</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=184"><span>2003-11-08</span></a></li>
+</ul></ul>
+<li><span>DE</span><ul class="place">
+<li><span>Aachen</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=60"><span>2000-01-15</span></a></li>
+</ul><li><span>Berlin</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=106"><span>2001-05-19</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=112"><span>2001-09-07</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=139"><span>2002-05-25</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=168"><span>2003-05-04</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=200"><span>2004-05-29</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=219"><span>2005-05-14</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=250"><span>2006-05-20</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=273"><span>2007-05-06</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=296"><span>2008-05-10</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=327"><span>2009-05-09</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=357"><span>2010-05-15</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=383"><span>2011-05-14</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=396"><span>2011-11-12</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=407"><span>2012-05-12</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=437"><span>2013-05-11</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=442"><span>2013-08-23</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=443"><span>2013-08-25</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=459"><span>2014-05-17</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=489"><span>2015-05-02</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=521"><span>2016-05-21</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=556"><span>2017-05-27</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=604"><span>2018-05-26</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=648"><span>2019-05-25</span></a></li>
+</ul><li><span>Bochum</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=33"><span>1998-11-21</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=58"><span>1999-11-20</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=78"><span>2000-06-10</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=109"><span>2001-06-23</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=213"><span>2005-02-12</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=239"><span>2006-02-18</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=266"><span>2007-02-10</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=289"><span>2008-03-01</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=451"><span>2013-11-09</span></a></li>
+</ul><li><span>Breiholz</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=225"><span>2005-07-30</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=255"><span>2006-07-15</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=276"><span>2007-06-09</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=299"><span>2008-06-07</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=329"><span>2009-06-13</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=358"><span>2010-06-05</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=463"><span>2014-07-26</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=561"><span>2017-07-15</span></a></li>
+</ul><li><span>Dortmund</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=65"><span>2000-03-04</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=96"><span>2001-01-27</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=121"><span>2002-01-26</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=159"><span>2003-01-25</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=188"><span>2004-01-31</span></a></li>
+</ul><li><span>Duisburg</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=110"><span>2001-06-30</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=131"><span>2002-04-13</span></a></li>
+</ul><li><span>Düsseldorf</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=74"><span>2000-05-13</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=113"><span>2001-09-22</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=148"><span>2002-10-05</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=183"><span>2003-11-01</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=204"><span>2004-10-02</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=232"><span>2005-10-22</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=260"><span>2006-10-14</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=285"><span>2007-11-10</span></a></li>
+</ul><li><span>Erfurt</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=438"><span>2013-06-29</span></a></li>
+</ul><li><span>Essen</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=32"><span>1998-10-25</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=90"><span>2000-11-25</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=117"><span>2001-11-10</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=153"><span>2002-11-16</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=208"><span>2004-11-20</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=234"><span>2005-11-19</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=263"><span>2006-11-19</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=286"><span>2007-11-24</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=312"><span>2008-11-29</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=345"><span>2009-11-21</span></a></li>
+</ul><li><span>Frankfurt</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=251"><span>2006-06-10</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=283"><span>2007-09-22</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=308"><span>2008-09-20</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=339"><span>2009-09-12</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=467"><span>2014-08-30</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=473"><span>2014-11-01</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=480"><span>2015-02-07</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=549"><span>2017-03-18</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=577"><span>2017-11-11</span></a></li>
+</ul><li><span>Freckenhorst</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=310"><span>2008-10-04</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=341"><span>2009-10-03</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=369"><span>2010-11-06</span></a></li>
+</ul><li><span>Gießen</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=375"><span>2011-02-05</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=399"><span>2012-02-18</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=416"><span>2012-10-07</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=419"><span>2012-11-03</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=428"><span>2013-02-23</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=456"><span>2014-03-01</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=484"><span>2015-03-14</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=512"><span>2016-02-13</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=538"><span>2016-11-19</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=589"><span>2018-02-17</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=626"><span>2018-11-17</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=666"><span>2019-11-16</span></a></li>
+</ul><li><span>Gladbeck</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=334"><span>2009-08-08</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=335"><span>2009-08-09</span></a></li>
+</ul><li><span>Hamburg</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=176"><span>2003-08-16</span></a></li>
+</ul><li><span>Hannover</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=44"><span>1999-04-24</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=126"><span>2002-02-23</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=173"><span>2003-06-21</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=201"><span>2004-06-26</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=223"><span>2005-06-25</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=278"><span>2007-06-23</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=301"><span>2008-07-05</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=338"><span>2009-09-05</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=385"><span>2011-06-18</span></a></li>
+</ul><li><span>Herdecke</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=41"><span>1999-03-27</span></a></li>
+</ul><li><span>Herne</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=25"><span>1998-05-17</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=47"><span>1999-05-16</span></a></li>
+</ul><li><span>Köln</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=179"><span>2003-09-20</span></a></li>
+</ul><li><span>Mutterstadt</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=363"><span>2010-09-04</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=391"><span>2011-09-17</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=412"><span>2012-09-16</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=444"><span>2013-09-14</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=470"><span>2014-10-04</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=498"><span>2015-09-19</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=528"><span>2016-09-17</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=567"><span>2017-09-09</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=619"><span>2018-09-22</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=658"><span>2019-09-07</span></a></li>
+</ul><li><span>Rendsburg</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=527"><span>2016-08-20</span></a></li>
+</ul><li><span>Rümmingen</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=435"><span>2013-04-20</span></a></li>
+</ul><li><span>Warendorf</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=371"><span>2010-11-27</span></a></li>
+</ul><li><span>Weil</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=92"><span>2000-12-16</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=118"><span>2001-12-15</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=158"><span>2003-01-11</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=209"><span>2004-12-11</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=236"><span>2005-12-10</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=253"><span>2006-07-01</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=265"><span>2007-01-13</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=279"><span>2007-08-04</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=287"><span>2008-01-12</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=374"><span>2011-01-08</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=422"><span>2012-12-08</span></a></li>
+</ul><li><span>Wiesbaden</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=643"><span>2019-03-23</span></a></li>
+</ul><li><span>Wipperfürth</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=506"><span>2015-11-14</span></a></li>
+</ul><li><span>Wuppertal</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=49"><span>1999-06-12</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=68"><span>2000-04-01</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=100"><span>2001-03-31</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=129"><span>2002-03-24</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=166"><span>2003-04-12</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=191"><span>2004-03-28</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=217"><span>2005-04-02</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=243"><span>2006-04-08</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=270"><span>2007-04-21</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=292"><span>2008-04-05</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=323"><span>2009-03-28</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=353"><span>2010-04-10</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=380"><span>2011-04-09</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=402"><span>2012-03-31</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=433"><span>2013-04-13</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=457"><span>2014-04-12</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=487"><span>2015-04-11</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=518"><span>2016-04-16</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=550"><span>2017-04-22</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=595"><span>2018-04-07</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=645"><span>2019-04-13</span></a></li>
+</ul></ul>
+<li><span>BE</span><ul class="place">
+<li><span>Antwerp</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=581"><span>2017-12-09</span></a></li>
+</ul><li><span>Antwerpen</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=75"><span>2000-05-14</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=86"><span>2000-09-17</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=119"><span>2001-12-16</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=202"><span>2004-07-03</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=203"><span>2004-08-14</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=256"><span>2006-08-12</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=257"><span>2006-08-13</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=280"><span>2007-08-11</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=281"><span>2007-08-12</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=309"><span>2008-09-27</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=326"><span>2009-04-17</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=393"><span>2011-10-30</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=405"><span>2012-04-21</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=417"><span>2012-10-20</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=436"><span>2013-05-11</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=502"><span>2015-10-10</span></a></li>
+</ul><li><span>Auvelais</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=322"><span>2009-03-28</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=344"><span>2009-11-14</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=351"><span>2010-03-06</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=362"><span>2010-08-28</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=367"><span>2010-10-16</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=370"><span>2010-11-11</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=378"><span>2011-02-26</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=382"><span>2011-05-01</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=387"><span>2011-07-21</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=397"><span>2011-11-12</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=491"><span>2015-05-23</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=511"><span>2015-12-26</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=516"><span>2016-03-12</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=548"><span>2017-03-11</span></a></li>
+</ul><li><span>Begijnendijk</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=654"><span>2019-08-15</span></a></li>
+</ul><li><span>Brecht</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=471"><span>2014-10-04</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=621"><span>2018-10-13</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=642"><span>2019-03-23</span></a></li>
+</ul><li><span>Brugge</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=593"><span>2018-03-18</span></a></li>
+</ul><li><span>Brussel</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=37"><span>1999-02-26</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=59"><span>1999-12-18</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=478"><span>2014-12-06</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=505"><span>2015-11-11</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=536"><span>2016-11-11</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=601"><span>2018-05-05</span></a></li>
+</ul><li><span>Brussels</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=630"><span>2018-12-01</span></a></li>
+</ul><li><span>Charleroi</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=552"><span>2017-04-29</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=557"><span>2017-05-27</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=576"><span>2017-11-04</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=647"><span>2019-05-12</span></a></li>
+</ul><li><span>Ciney</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=431"><span>2013-03-30</span></a></li>
+</ul><li><span>Falisolle</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=415"><span>2012-10-06</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=450"><span>2013-11-02</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=486"><span>2015-03-28</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=495"><span>2015-08-01</span></a></li>
+</ul><li><span>Genk</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=661"><span>2019-10-06</span></a></li>
+</ul><li><span>Gent</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=105"><span>2001-05-13</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=413"><span>2012-09-22</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=517"><span>2016-04-09</span></a></li>
+</ul><li><span>Gosselies</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=605"><span>2018-05-26</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=665"><span>2019-11-11</span></a></li>
+</ul><li><span>Hasselt</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=98"><span>2001-03-17</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=130"><span>2002-03-24</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=401"><span>2012-03-03</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=430"><span>2013-03-23</span></a></li>
+</ul><li><span>Helchteren</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=640"><span>2019-03-06</span></a></li>
+</ul><li><span>Hoeilaart</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=625"><span>2018-11-04</span></a></li>
+</ul><li><span>Hulshout</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=562"><span>2017-08-19</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=574"><span>2017-11-01</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=587"><span>2018-02-12</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=603"><span>2018-05-21</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=615"><span>2018-08-15</span></a></li>
+</ul><li><span>Jemeppe-sur-Sambre</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=421"><span>2012-11-11</span></a></li>
+</ul><li><span>Leuven</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=55"><span>1999-10-16</span></a></li>
+</ul><li><span>Lint</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=453"><span>2013-11-10</span></a></li>
+</ul><li><span>Lommel</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=597"><span>2018-04-14</span></a></li>
+</ul><li><span>Mechelen</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=207"><span>2004-11-11</span></a></li>
+</ul><li><span>Overijse</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=408"><span>2012-05-12</span></a></li>
+</ul><li><span>Rijkevorsel</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=235"><span>2005-11-20</span></a></li>
+</ul><li><span>Sambreville</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=315"><span>2008-12-06</span></a></li>
+</ul><li><span>Sint-Katelijne-Waver</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=638"><span>2019-02-24</span></a></li>
+</ul><li><span>Vieux-Waleffe</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=608"><span>2018-06-16</span></a></li>
+</ul><li><span>Vorselaar</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=554"><span>2017-05-06</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=566"><span>2017-09-02</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=585"><span>2018-01-21</span></a></li>
+</ul><li><span>Waterloo</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=496"><span>2015-08-22</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=497"><span>2015-08-23</span></a></li>
+</ul><li><span>Westmeerbeek</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=584"><span>2017-12-23</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=614"><span>2018-07-21</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=634"><span>2018-12-29</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=672"><span>2019-12-28</span></a></li>
+</ul></ul>
+<li><span>UA</span><ul class="place">
+<li><span>Oek</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=125"><span>2002-02-16</span></a></li>
+</ul><li><span>Київ</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=70"><span>2000-04-09</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=81"><span>2000-07-01</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=82"><span>2000-08-03</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=91"><span>2000-12-03</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=93"><span>2000-12-17</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=95"><span>2001-01-14</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=101"><span>2001-04-07</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=102"><span>2001-04-08</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=133"><span>2002-04-20</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=134"><span>2002-04-21</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=304"><span>2008-08-17</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=305"><span>2008-08-18</span></a></li>
+</ul><li><span>Костопіль</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=211"><span>2005-01-05</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=218"><span>2005-04-03</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=230"><span>2005-10-02</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=238"><span>2006-01-28</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=244"><span>2006-04-08</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=245"><span>2006-04-09</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=247"><span>2006-05-08</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=269"><span>2007-03-31</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=274"><span>2007-05-13</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=293"><span>2008-04-13</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=317"><span>2009-02-07</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=318"><span>2009-02-08</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=324"><span>2009-04-05</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=332"><span>2009-07-08</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=347"><span>2009-12-27</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=354"><span>2010-04-25</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=366"><span>2010-10-10</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=373"><span>2010-12-19</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=379"><span>2011-04-03</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=403"><span>2012-04-01</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=440"><span>2013-08-10</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=446"><span>2013-09-29</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=462"><span>2014-06-14</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=476"><span>2014-11-22</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=507"><span>2015-11-22</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=526"><span>2016-08-13</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=632"><span>2018-12-22</span></a></li>
+</ul><li><span>Љвів</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=196"><span>2004-05-12</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=248"><span>2006-05-09</span></a></li>
+</ul><li><span>Одеса</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=99"><span>2001-03-31</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=120"><span>2001-12-29</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=122"><span>2002-02-02</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=135"><span>2002-04-27</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=137"><span>2002-04-28</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=149"><span>2002-10-26</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=154"><span>2002-12-07</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=195"><span>2004-05-09</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=231"><span>2005-10-08</span></a></li>
+</ul><li><span>Рівне</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=138"><span>2002-05-02</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=141"><span>2002-05-25</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=142"><span>2002-05-26</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=151"><span>2002-10-31</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=156"><span>2002-12-15</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=157"><span>2003-01-05</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=161"><span>2003-03-08</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=164"><span>2003-04-05</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=165"><span>2003-04-06</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=171"><span>2003-05-25</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=174"><span>2003-08-03</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=177"><span>2003-08-30</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=178"><span>2003-08-31</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=187"><span>2004-01-11</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=189"><span>2004-02-15</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=193"><span>2004-04-14</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=197"><span>2004-05-15</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=198"><span>2004-05-16</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=212"><span>2005-01-09</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=214"><span>2005-02-13</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=221"><span>2005-05-22</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=228"><span>2005-10-01</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=237"><span>2006-01-16</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=240"><span>2006-02-25</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=246"><span>2006-05-06</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=264"><span>2007-01-12</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=272"><span>2007-05-05</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=291"><span>2008-03-23</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=303"><span>2008-08-14</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=365"><span>2010-10-03</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=376"><span>2011-02-20</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=394"><span>2011-11-03</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=398"><span>2012-02-04</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=445"><span>2013-09-28</span></a></li>
+</ul></ul>
+<li><span>GR</span><ul class="place">
+<li><span>Αθήνα</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=482"><span>2015-02-28</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=530"><span>2016-09-25</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=537"><span>2016-11-12</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=543"><span>2016-12-11</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=559"><span>2017-06-18</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=582"><span>2017-12-16</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=592"><span>2018-03-18</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=610"><span>2018-06-23</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=629"><span>2018-11-25</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=633"><span>2018-12-23</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=646"><span>2019-04-20</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=652"><span>2019-07-06</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=660"><span>2019-09-22</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=671"><span>2019-12-22</span></a></li>
+</ul><li><span>Θεσσαλονίκη</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=432"><span>2013-03-31</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=466"><span>2014-08-29</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=468"><span>2014-08-31</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=490"><span>2015-05-17</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=523"><span>2016-05-29</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=539"><span>2016-11-20</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=586"><span>2018-01-21</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=600"><span>2018-04-29</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=602"><span>2018-05-13</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=606"><span>2018-06-02</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=622"><span>2018-10-21</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=628"><span>2018-11-25</span></a></li>
+</ul><li><span>Μαρμάρι</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=563"><span>2017-08-19</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=565"><span>2017-08-20</span></a></li>
+</ul><li><span>Νιγρίτα</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=570"><span>2017-10-08</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=609"><span>2018-06-17</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=612"><span>2018-06-24</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=653"><span>2019-07-20</span></a></li>
+</ul><li><span>Πάτρα</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=514"><span>2016-02-21</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=532"><span>2016-10-01</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=540"><span>2016-11-27</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=544"><span>2016-12-18</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=553"><span>2017-04-29</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=569"><span>2017-10-08</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=580"><span>2017-12-07</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=583"><span>2017-12-21</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=594"><span>2018-03-24</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=598"><span>2018-04-21</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=623"><span>2018-10-28</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=631"><span>2018-12-16</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=637"><span>2019-02-23</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=641"><span>2019-03-23</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=670"><span>2019-12-15</span></a></li>
+</ul><li><span>Πύργος</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=558"><span>2017-06-03</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=590"><span>2018-03-11</span></a></li>
+</ul><li><span>Σέρρες</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=533"><span>2016-10-02</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=663"><span>2019-10-26</span></a></li>
+</ul><li><span>Σκύδρα</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=500"><span>2015-09-26</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=573"><span>2017-10-28</span></a></li>
+</ul></ul>
+<li><span>GB</span><ul class="place">
+<li><span>Cambridge</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=295"><span>2008-05-03</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=355"><span>2010-05-01</span></a></li>
+</ul><li><span>Derby</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=314"><span>2008-12-06</span></a></li>
+</ul><li><span>London</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=14"><span>1997-08-22</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=28"><span>1998-08-29</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=52"><span>1999-08-26</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=84"><span>2000-08-25</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=258"><span>2006-08-27</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=306"><span>2008-08-23</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=409"><span>2012-08-19</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=441"><span>2013-08-18</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=464"><span>2014-08-17</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=564"><span>2017-08-20</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=616"><span>2018-08-19</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=668"><span>2019-11-30</span></a></li>
+</ul><li><span>Manchester</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=226"><span>2005-08-20</span></a></li>
+</ul><li><span>Newcastle</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=389"><span>2011-08-07</span></a></li>
+</ul><li><span>North Shields</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=388"><span>2011-08-06</span></a></li>
+</ul><li><span>Sheffield</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=337"><span>2009-08-29</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=348"><span>2009-12-29</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=465"><span>2014-08-23</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=579"><span>2017-12-03</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=655"><span>2019-08-23</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=656"><span>2019-08-24</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=657"><span>2019-08-25</span></a></li>
+</ul></ul>
+<li><span>EU</span><ul class="place">
+<li><span>Barakaldo</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=541"><span>2016-11-27</span></a></li>
+</ul><li><span>Bilbao</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=460"><span>2014-05-31</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=477"><span>2014-11-29</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=481"><span>2015-02-22</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=492"><span>2015-05-31</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=501"><span>2015-09-27</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=503"><span>2015-10-18</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=509"><span>2015-11-29</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=513"><span>2016-02-21</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=522"><span>2016-05-28</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=525"><span>2016-07-09</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=555"><span>2017-05-20</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=578"><span>2017-11-18</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=599"><span>2018-04-21</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=607"><span>2018-06-16</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=627"><span>2018-11-17</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=650"><span>2019-06-15</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=667"><span>2019-11-16</span></a></li>
+</ul></ul>
+<li><span>NO</span><ul class="place">
+<li><span>Arendal</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=215"><span>2005-02-23</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=241"><span>2006-03-01</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=267"><span>2007-02-28</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=288"><span>2008-02-23</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=298"><span>2008-05-31</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=320"><span>2009-03-07</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=336"><span>2009-08-22</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=426"><span>2013-02-20</span></a></li>
+</ul></ul>
+<li><span>FR</span><ul class="place">
+<li><span>Caen</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=472"><span>2014-10-25</span></a></li>
+</ul><li><span>Cannes</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=429"><span>2013-03-03</span></a></li>
+</ul><li><span>Dunkerque</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=508"><span>2015-11-22</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=529"><span>2016-09-24</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=571"><span>2017-10-14</span></a></li>
+</ul><li><span>Paris</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=418"><span>2012-10-27</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=449"><span>2013-10-26</span></a></li>
+</ul></ul>
+<li><span>CZ</span><ul class="place">
+<li><span>Pardubice</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=302"><span>2008-07-26</span></a></li>
+</ul><li><span>Praha</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=392"><span>2011-10-14</span></a></li>
+<li><a href="../../cgi/tourn_table.php?eid=448"><span>2013-10-12</span></a></li>
+</ul></ul>
+<li><span>AT</span><ul class="place">
+<li><span>Wien</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=185"><span>2003-11-22</span></a></li>
+</ul></ul>
+<li><span>CH</span><ul class="place">
+<li><span>Basel</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=651"><span>2019-06-29</span></a></li>
+</ul></ul>
+<li><span>EE</span><ul class="place">
+<li><span>Tallinn</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=424"><span>2012-12-30</span></a></li>
+</ul></ul>
+<li><span>LV</span><ul class="place">
+<li><span>Rīga</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=331"><span>2009-07-04</span></a></li>
+</ul></ul>
+<li><span>RU</span><ul class="place">
+<li><span>Жуковский</span><ul class="date">
+<li><a href="../../cgi/tourn_table.php?eid=406"><span>2012-04-30</span></a></li>
+</ul></ul>
+</ul></div>
+</div>
+<p>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</p>
+<p class="unfloat">Best viewed with <b>any</b> standard conformant XHTML-browser.</p>
+<p>Your browser is <a href="../../help/outdated/index.php">outdated</a> and does not accept XHTML.</p><p><a href="http://petition.stopsoftwarepatents.eu/731002881082/"><img class="pat" src="../../img/ssp-181-30.gif"
+              alt="stopsoftwarepatents.eu petition banner" /></a></p>
+
+</body>
+</html>

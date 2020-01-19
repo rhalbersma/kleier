@@ -9,21 +9,20 @@ import click
 import pandas as pd
 
 from . import concat
+from . import detect
+from . import get
 from . import parse
 from . import read
-from . import wget
 
 @click.group()
 def kleier():
     pass
 
 @kleier.command()
-@click.option(
+@click.confirmation_option(
     '-y', '--yes',
     hidden=True,
-    is_flag=True,
-    expose_value=False,
-    prompt='Downloading the entire database takes about 13 minutes and consumes about 160 Mb on disk. Are you sure?'
+    prompt='The database takes about 15 minutes to download, and contains more than 3600 files, totalling 160 Mb on disk. Do you want to continue?'
 )
 @click.option(
     '-H', '--html-path',
@@ -32,23 +31,33 @@ def kleier():
     show_default=True,
     help='PATH is the directory where all .html files will be saved to.'
 )
-@click.argument('max_eid', type=int)
-@click.argument('max_pid', type=int)
-def download(max_eid, max_pid, html_path) -> None:
+def download(html_path) -> None:
     """
-    Download all Classic Stratego data from https://www.kleier.net/.
+    Get all Classic Stratego data from https://www.kleier.net/.
     """
-    for pid in range(1, 1 + max_pid):
-        wget._player(pid, html_path)
-    wget._rat_table(html_path, games=0, ntourn=max_eid, items=max_eid*max_pid)
-    for eid in range(1, 1 + max_eid):
-        wget._tourn_table(eid, html_path)
-    wget._tournaments_byplace(html_path)
+    click.echo('Downloading the list of tournaments.')
+    get._tournaments_byplace(html_path)
+    click.echo('Detecting the number of tournaments: ', nl=False)
+    eid_seq = detect._tourn_tables(html_path)
+    click.echo(f'{len(eid_seq)}')
+    assert min(eid_seq) == 1
+    assert max(eid_seq) == len(eid_seq)
+    with click.progressbar(eid_seq, label=f'Downloading {len(eid_seq)} tournament tables:') as bar:
+        for eid in bar:
+            get._tourn_table(eid, html_path)
+    click.echo('Detecting the number of players: ', nl=False)
+    pid_seq = range(1, 1 + max(detect._players(html_path)))
+    click.echo(f'{len(pid_seq)}')
+    with click.progressbar(pid_seq, label=f'Downloading {len(pid_seq)} player histories:') as bar:
+        for pid in bar:
+            get._player(pid, html_path)
+    click.echo('Downloading the rating history.')
+    get._rat_table(html_path, games=0, ntourn=len(eid_seq), items=len(eid_seq)*len(pid_seq))
 
 @kleier.command()
 @click.option(
     '-H', '--html-path',
-    type=click.Path(writable=True),
+    type=click.Path(exists=True),
     default='data/html',
     show_default=True,
     help='PATH is the directory where all .html files will be read from.'
@@ -62,7 +71,7 @@ def download(max_eid, max_pid, html_path) -> None:
 )
 def pickle(html_path, pkl_path) -> None:
     """
-    Pickle all Classic Stratego data in the Pandas DataFrame format.
+    Pickle all Classic Stratego data into the Pandas DataFrame format.
     """
     names, games = concat._players(html_path)
     rat_table = parse._rat_table(read._rat_table(html_path))
