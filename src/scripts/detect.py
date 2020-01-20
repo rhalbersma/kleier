@@ -5,10 +5,9 @@
 
 import os
 import re
-
 from typing import Sequence
 
-from . import read
+from scripts import read
 
 def _files(regex: str, path: str) -> Sequence[int]:
     return list(sorted({

@@ -4,10 +4,10 @@
 #          http://www.boost.org/LICENSE_1_0.txt)
 
 import re
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
-from typing import Tuple
 
 def _lists(rat_table: pd.DataFrame) -> pd.DataFrame:
     df = (rat_table

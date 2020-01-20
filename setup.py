@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 #          Copyright Rein Halbersma 2019-2020.
 # Distributed under the Boost Software License, Version 1.0.
 #    (See accompanying file LICENSE_1_0.txt or copy at
@@ -22,8 +20,8 @@ setup(
     entry_points = {
         'console_scripts': [
             'kleier=scripts.cli:kleier',
-            'download=scripts.cli:download'
-            'pickle=scripts.cli:pickle'
+            'fetch=scripts.cli:fetch'
+            'parse=scripts.cli:parse'
         ],
     },
     install_requires=[

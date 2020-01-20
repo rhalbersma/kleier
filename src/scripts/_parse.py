@@ -4,11 +4,14 @@
 #          http://www.boost.org/LICENSE_1_0.txt)
 
 import re
+from typing import Sequence, Tuple
 
 import bs4
 import numpy as np
 import pandas as pd
-from typing import Sequence, Tuple
+
+from scripts import detect
+from scripts import read
 
 # Helper functions for _player(pid, soup).
 
@@ -143,7 +146,8 @@ def _group_standings_results(eid: int, gid: int, table: bs4.element.Tag) -> Tupl
 
 # Main parsing API: _player, _rat_table, _tourn_table, _tournaments_byplace.
 
-def _player(pid: int, soup: bs4.BeautifulSoup) -> Tuple[pd.DataFrame]:
+def _player(pid: int, path: str) -> Tuple[pd.DataFrame]:
+    soup = read._player(pid, path)
     header = soup.find('h1')
     table = soup.find('table')
     assert header or not table
@@ -154,11 +158,21 @@ def _player(pid: int, soup: bs4.BeautifulSoup) -> Tuple[pd.DataFrame]:
     games = _games(pid, table) if table else None
     return name, games
 
-def _rat_table(soup: bs4.BeautifulSoup) -> pd.DataFrame:
-    table = soup.find('table', {'summary': 'Stratego Rating'})
+def _players(path: str) -> Tuple[pd.DataFrame]:
+    return tuple(
+        pd.concat(list(t), ignore_index=True, sort=False)
+        for t in zip(*[
+            _player(pid, path)
+            for pid in detect._files(r'player-\d+\.html', path)
+        ])
+    )
+
+def _rat_table(path: str) -> pd.DataFrame:
+    table = read._rat_table(path).find('table', {'summary': 'Stratego Rating'})
     return pd.read_html(str(table))[0]
 
-def _tourn_table(eid: int, soup: bs4.BeautifulSoup) -> Tuple[pd.DataFrame]:
+def _tourn_table(eid: int, path: str) -> Tuple[pd.DataFrame]:
+    soup = read._tourn_table(eid, path)
     cross_table_seq = soup.find_all('table', {'summary': 'Stratego Tournament Cross-Table'})
     remarks = pd.DataFrame(
         data=[
@@ -185,12 +199,21 @@ def _tourn_table(eid: int, soup: bs4.BeautifulSoup) -> Tuple[pd.DataFrame]:
     )
     return event, groups, standings, results
 
-def _tournaments_byplace(soup: bs4.BeautifulSoup) -> pd.DataFrame:
+def _tourn_tables(path: str) -> Tuple[pd.DataFrame]:
+    return tuple(
+        pd.concat(list(t), ignore_index=True, sort=False)
+        for t in zip(*[
+            _tourn_table(eid, path)
+            for eid in detect._files(r'tourn_table-\d+\.html', path)
+        ])
+    )
+
+def _tournaments_byplace(path: str) -> pd.DataFrame:
     return (pd
         .DataFrame(
             data=[
                 (int(eid.get('href').split('=')[1]), nat.find('span').text)
-                for nat in soup.find('ul', {'class': 'nat'}).find_all('li', recursive=False)
+                for nat in read._tournaments_byplace(path).find('ul', {'class': 'nat'}).find_all('li', recursive=False)
                 for eid in nat.find_all('a')
             ],
             columns=['eid', 'nat']

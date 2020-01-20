@@ -4,10 +4,10 @@
 #          http://www.boost.org/LICENSE_1_0.txt)
 
 import re
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
-from typing import Tuple
 
 def format_events(df: pd.DataFrame) -> pd.DataFrame:
     return (df

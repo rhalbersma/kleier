@@ -3,8 +3,9 @@
 #    (See accompanying file LICENSE_1_0.txt or copy at
 #          http://www.boost.org/LICENSE_1_0.txt)
 
-import bs4
 import os
+
+import bs4
 
 def _read(path: str, file: str) -> bs4.BeautifulSoup:
     assert os.path.exists(path) and file.endswith('.html')
