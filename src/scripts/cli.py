@@ -8,9 +8,92 @@ import os
 import click
 import pandas as pd
 
-from scripts import detect
-from scripts import _fetch
-from scripts import _parse
+from scripts._extract import _scan
+from scripts._extract import _wget
+from scripts._transform import _format
+from scripts._transform import _parse
+
+dataset_names = [
+    'tournaments_byplace',
+    'events',
+    'groups',
+    'activity',
+    'standings',
+    'results',
+    'names',
+    'games',
+    'lists',
+    'ratings',
+    'history'
+]
+
+def _do_fetch(html_path: str) -> None:
+    click.echo('Fetching the list of tournaments.')
+    _wget._tournaments_byplace(html_path)
+    click.echo('Scanning the number of tournaments: ', nl=False)
+    eid_seq = _scan._tourn_tables(html_path)
+    click.echo(f'{len(eid_seq)}')
+    assert min(eid_seq) == 1
+    assert max(eid_seq) == len(eid_seq)
+    with click.progressbar(eid_seq, label=f'Fetching {len(eid_seq)} tournament tables:') as bar:
+        for eid in bar:
+            _wget._tourn_table(eid, html_path)
+    click.echo('Scanning the number of players: ', nl=False)
+    pid_seq = range(1, 1 + max(_scan._players(html_path)))
+    click.echo(f'{len(pid_seq)}')
+    with click.progressbar(pid_seq, label=f'Fetching {len(pid_seq)} player histories:') as bar:
+        for pid in bar:
+            _wget._player(pid, html_path)
+    click.echo('Fetching the rating history.')
+    _wget._rat_table(html_path, games=0, ntourn=len(eid_seq), items=len(eid_seq)*len(pid_seq))
+
+def _do_parse(html_path: str, pkl_path: str) -> None:
+    click.echo('Parsing the list of tournaments.')
+    tournaments_byplace = _parse._tournaments_byplace(html_path)
+    click.echo('Parsing the tournament events, groups, activity, standings and results.')
+    events, groups, activity, standings, results = _parse._tourn_tables(html_path)
+    click.echo('Parsing the player names and games.')
+    names, games = _parse._players(html_path)
+    click.echo('Parsing the rating history.')
+    lists, ratings, history = _parse._rat_table(html_path)
+    datasets = [
+        tournaments_byplace,
+        events,
+        groups,
+        activity,
+        standings,
+        results,
+        names,
+        games,
+        lists,
+        ratings,
+        history
+    ]
+    os.makedirs(pkl_path, exist_ok=True)
+    for key, value in zip(dataset_names, datasets):
+        value.to_pickle(os.path.join(pkl_path, key))
+
+def _do_format(pkl_path: str) -> None:
+    assert os.path.exists(pkl_path)
+    tournaments_byplace, events, groups, activity, standings, results, names, games, lists, ratings, history = tuple(
+        pd.read_pickle(os.path.join(pkl_path, file))
+        for file in dataset_names
+    )
+    click.echo('Formatting the list of tournaments.')
+    tournaments_byplace = _format._tournaments_byplace(tournaments_byplace)
+    click.echo('Formatting the tournament events, groups, activity, standings and results.')
+    events = _format._events(events)
+    groups = _format._groups(groups)
+    activity = _format._activity(activity)
+    standings = _format._standings(standings)
+    results = _format._results(results)
+    click.echo('Formatting the player names and games.')
+    names = _format._names(names)
+    games = _format._games(games)
+    click.echo('Formatting the rating history.')
+    lists = _format._lists(lists)
+    ratings = _format._ratings(ratings)
+    history = _format._history(history)
 
 @click.group()
 def kleier():
@@ -22,7 +105,7 @@ def kleier():
     hidden=True,
     prompt=
 """The database consists of 3600 files and takes 15 minutes to download.
-After this operation, 160 Mb of additional disk space will be used. 
+After this operation, 160 Mb of additional disk space will be used.
 Do you want to continue?"""
 )
 @click.option(
@@ -36,24 +119,7 @@ def fetch(html_path) -> None:
     """
     Fetch all Classic Stratego data from https://www.kleier.net/.
     """
-    click.echo('Fetching the list of tournaments.')
-    _fetch._tournaments_byplace(html_path)
-    click.echo('Detecting the number of tournaments: ', nl=False)
-    eid_seq = detect._tourn_tables(html_path)
-    click.echo(f'{len(eid_seq)}')
-    assert min(eid_seq) == 1
-    assert max(eid_seq) == len(eid_seq)
-    with click.progressbar(eid_seq, label=f'Fetching {len(eid_seq)} tournament tables:') as bar:
-        for eid in bar:
-            _fetch._tourn_table(eid, html_path)
-    click.echo('Detecting the number of players: ', nl=False)
-    pid_seq = range(1, 1 + max(detect._players(html_path)))
-    click.echo(f'{len(pid_seq)}')
-    with click.progressbar(pid_seq, label=f'Fetching {len(pid_seq)} player histories:') as bar:
-        for pid in bar:
-            _fetch._player(pid, html_path)
-    click.echo('Fetching the rating history.')
-    _fetch._rat_table(html_path, games=0, ntourn=len(eid_seq), items=len(eid_seq)*len(pid_seq))
+    _do_fetch(html_path)
 
 @kleier.command()
 @click.option(
@@ -74,24 +140,4 @@ def parse(html_path, pkl_path) -> None:
     """
     Parse all Classic Stratego data into the Pandas DataFrame format.
     """
-    click.echo('Parsing the list of tournaments.')
-    tournaments_byplace = _parse._tournaments_byplace(html_path)
-    click.echo('Parsing the tournament events, groups, standings and results.')
-    events, groups, standings, results = _parse._tourn_tables(html_path)
-    click.echo('Parsing the player names and games.')
-    names, games = _parse._players(html_path)
-    click.echo('Parsing the rating history.')
-    rat_table = _parse._rat_table(html_path)
-    data = {
-        'tournaments_byplace'   : tournaments_byplace,
-        'events'                : events,
-        'groups'                : groups,
-        'standings'             : standings,
-        'results'               : results,
-        'names'                 : names,
-        'games'                 : games,
-        'rat_table'             : rat_table
-    }
-    os.makedirs(pkl_path, exist_ok=True)
-    for key, value in data.items():
-        value.to_pickle(os.path.join(pkl_path, key))
+    _do_parse(html_path, pkl_path)

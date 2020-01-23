@@ -5,20 +5,20 @@
 
 import os
 
-import bs4
+import bs4, lxml
 
-def _read(path: str, file: str) -> bs4.BeautifulSoup:
+def _do_soup(path: str, file: str) -> bs4.BeautifulSoup:
     assert os.path.exists(path) and file.endswith('.html')
     return bs4.BeautifulSoup(open(os.path.join(path, file)), 'lxml')
 
 def _player(pid: int, path: str) -> bs4.BeautifulSoup:
-    return _read(path, f'player-{pid}.html')
+    return _do_soup(path, f'player-{pid}.html')
 
 def _rat_table(path: str) -> bs4.BeautifulSoup:
-    return _read(path, 'rat_table.html')
+    return _do_soup(path, 'rat_table.html')
 
 def _tourn_table(eid: int, path: str) -> bs4.BeautifulSoup:
-    return _read(path, f'tourn_table-{eid}.html')
+    return _do_soup(path, f'tourn_table-{eid}.html')
 
 def _tournaments_byplace(path: str) -> bs4.BeautifulSoup:
-    return _read(path, 'tournaments_byplace.html')
+    return _do_soup(path, 'tournaments_byplace.html')

@@ -10,10 +10,10 @@ import bs4
 import numpy as np
 import pandas as pd
 
-from scripts import detect
-from scripts import read
+from scripts._extract import _scan
+from scripts._extract import _soup
 
-# Helper functions for _player(pid, soup).
+# Helper functions for _player
 
 def _name_from_header(header: bs4.element.Tag) -> str:
     return header.text.split('History of ')[1]
@@ -33,7 +33,10 @@ def _games(pid: int, table: bs4.element.Tag) -> pd.DataFrame:
         .assign(
             pid = pid
         )
-        .pipe(lambda x: x.loc[:, x.columns.to_list()[-1:] + x.columns.to_list()[:-1]])
+        # make 'pid' the first column
+        .pipe(lambda df: df
+            .loc[:, df.columns.to_list()[-1:] + df.columns.to_list()[:-1]]
+        )
         .assign(Unplayed = pd.Series([
             td['class'][0] == 'unplayed' if td.has_attr('class') else np.nan
             for tr in table.find_all('tr')[3:]
@@ -41,7 +44,50 @@ def _games(pid: int, table: bs4.element.Tag) -> pd.DataFrame:
         ]))
     )
 
-# Helper functions for _tourn_table(eid, soup).
+# Helper functions for _rat_table
+
+def _long_rat_table(table: bs4.element.Tag) -> pd.DataFrame:
+    rat_table = pd.read_html(str(table))[0]
+    rating = rat_table.filter(regex='Rating').columns
+    long_rat_table = (pd
+        .melt(rat_table,
+            id_vars=rat_table.drop(columns=rating).columns.tolist(),
+            value_vars=rating.tolist(),
+            value_name='Rating'
+        )
+    )
+    long_rat_table.columns = pd.MultiIndex.from_tuples([
+        column if isinstance(column, tuple) else tuple([column] * 4)
+        for column in long_rat_table.columns.tolist()
+    ])
+    return long_rat_table
+
+def _lists(long_rat_table: pd.DataFrame) -> pd.DataFrame:
+    return (long_rat_table
+        .filter(regex='variable')
+        .drop_duplicates()
+        .reset_index(drop=True)
+    )
+
+def _ratings(long_rat_table: pd.DataFrame, lists: pd.DataFrame) -> pd.DataFrame:
+    return (long_rat_table
+        .merge(lists
+            .iloc[0:1, :]
+            , how='right', validate='many_to_one'
+        )
+        .pipe(lambda df: df
+            .drop(columns=df.filter(regex='variable'))
+        )
+    )
+
+def _history(long_rat_table: pd.DataFrame) -> pd.DataFrame:
+    return (long_rat_table
+        .pipe(lambda df: df
+            .drop(columns=df.filter(regex='Ranking|Games'))
+        )
+    )
+
+# Helper functions for _tourn_table
 
 def _results_from(s: str) -> Tuple[str]:
     return re.split(r'(^.*)\s?(\d{4}-\d{2}-\d{2})\s(.*$)', s)[1:-1]
@@ -79,32 +125,41 @@ def _cross_table(eid: int, gid: int, table: bs4.element.Tag) -> pd.DataFrame:
             gid = gid
         )
         # make 'eid' and 'gid' the first two columns
-        .pipe(lambda x: x.loc[:, x.columns.to_list()[-2:] + x.columns.to_list()[:-2]])
+        .pipe(lambda df: df
+            .loc[:, df.columns.to_list()[-2:] + df.columns.to_list()[:-2]]
+        )
     )
 
 def _unplayed_games(M: int, N: int, table: bs4.element.Tag) -> pd.DataFrame:
     return pd.DataFrame(
-        data = [[
+        data=[[
                 not td.text or td.has_attr('class') and td['class'][0] == 'unplayed'
                 for td in tr.find_all('td')[-N:]
             ]
             for tr in table.find_all('tr')[4:4+M]
         ],
-        columns = pd.MultiIndex.from_tuples([
+        columns=pd.MultiIndex.from_tuples([
             ('Unplayed', str(n + 1))
             for n in range(N)
         ])
     )
 
+def _activity(cross_table: pd.DataFrame) -> pd.DataFrame:
+    return (cross_table
+        .filter(regex='eid|Surname|Prename|Nationality|Rating')
+    )
+
 def _standings(cross_table: pd.DataFrame) -> pd.DataFrame:
-    return cross_table.drop(list(cross_table.filter(regex='Results|Unplayed')), axis='columns')
+    return (cross_table
+        .filter(regex='eid|gid|#|Surname|Prename|Nationality|Standings')
+    )
 
 def _results(cross_table: pd.DataFrame) -> pd.DataFrame:
     return (pd
         .wide_to_long(cross_table
             .filter(regex='eid|gid|#|Results|Unplayed')
-            .pipe(lambda x: x
-                .set_axis(x
+            .pipe(lambda df: df
+                .set_axis(df
                     .columns
                     .to_flat_index()
                     .map(''.join)
@@ -116,7 +171,7 @@ def _results(cross_table: pd.DataFrame) -> pd.DataFrame:
         .reset_index()
     )
 
-def _group_standings_results(eid: int, gid: int, table: bs4.element.Tag) -> Tuple[pd.DataFrame]:
+def _group_activity_standings_results(eid: int, gid: int, table: bs4.element.Tag) -> Tuple[pd.DataFrame]:
     cross_table = _cross_table(eid, gid, table)
     last_row = cross_table.tail(1)
     results_from = str(last_row.iloc[0, 2])
@@ -140,14 +195,15 @@ def _group_standings_results(eid: int, gid: int, table: bs4.element.Tag) -> Tupl
             file_name = file_name
         )
     )
+    activity = _activity(cross_table)
     standings = _standings(cross_table)
     results = _results(cross_table)
-    return group, standings, results
+    return group, activity, standings, results
 
-# Main parsing API: _player, _rat_table, _tourn_table, _tournaments_byplace.
+# Main parsing API: _player, _rat_table, _tourn_table, _tournaments_byplace
 
 def _player(pid: int, path: str) -> Tuple[pd.DataFrame]:
-    soup = read._player(pid, path)
+    soup = _soup._player(pid, path)
     header = soup.find('h1')
     table = soup.find('table')
     assert header or not table
@@ -163,16 +219,20 @@ def _players(path: str) -> Tuple[pd.DataFrame]:
         pd.concat(list(t), ignore_index=True, sort=False)
         for t in zip(*[
             _player(pid, path)
-            for pid in detect._files(r'player-\d+\.html', path)
+            for pid in _scan._files(r'player-\d+\.html', path)
         ])
     )
 
-def _rat_table(path: str) -> pd.DataFrame:
-    table = read._rat_table(path).find('table', {'summary': 'Stratego Rating'})
-    return pd.read_html(str(table))[0]
+def _rat_table(path: str) -> Tuple[pd.DataFrame]:
+    table = _soup._rat_table(path).find('table', {'summary': 'Stratego Rating'})
+    long_rat_table = _long_rat_table(table)
+    lists = _lists(long_rat_table)
+    ratings = _ratings(long_rat_table, lists)
+    history = _history(long_rat_table)
+    return lists, ratings, history
 
 def _tourn_table(eid: int, path: str) -> Tuple[pd.DataFrame]:
-    soup = read._tourn_table(eid, path)
+    soup = _soup._tourn_table(eid, path)
     cross_table_seq = soup.find_all('table', {'summary': 'Stratego Tournament Cross-Table'})
     remarks = pd.DataFrame(
         data=[
@@ -181,10 +241,10 @@ def _tourn_table(eid: int, path: str) -> Tuple[pd.DataFrame]:
         ],
         columns=['gid', 'remarks']
     )
-    groups, standings, results = tuple(
+    groups, activity, standings, results = tuple(
         pd.concat(list(t), ignore_index=True, sort=False)
         for t in zip(*[
-            _group_standings_results(eid, gid, cross_table)
+            _group_activity_standings_results(eid, gid, cross_table)
             for gid, cross_table in enumerate(cross_table_seq)
         ])
     )
@@ -197,14 +257,14 @@ def _tourn_table(eid: int, path: str) -> Tuple[pd.DataFrame]:
         .drop(columns=['place', 'date'])
         .merge(remarks, how='outer', validate='one_to_one')
     )
-    return event, groups, standings, results
+    return event, groups, activity, standings, results
 
 def _tourn_tables(path: str) -> Tuple[pd.DataFrame]:
     return tuple(
         pd.concat(list(t), ignore_index=True, sort=False)
         for t in zip(*[
             _tourn_table(eid, path)
-            for eid in detect._files(r'tourn_table-\d+\.html', path)
+            for eid in _scan._files(r'tourn_table-\d+\.html', path)
         ])
     )
 
@@ -213,7 +273,7 @@ def _tournaments_byplace(path: str) -> pd.DataFrame:
         .DataFrame(
             data=[
                 (int(eid.get('href').split('=')[1]), nat.find('span').text)
-                for nat in read._tournaments_byplace(path).find('ul', {'class': 'nat'}).find_all('li', recursive=False)
+                for nat in _soup._tournaments_byplace(path).find('ul', {'class': 'nat'}).find_all('li', recursive=False)
                 for eid in nat.find_all('a')
             ],
             columns=['eid', 'nat']

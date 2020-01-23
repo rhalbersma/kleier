@@ -269,21 +269,6 @@ def normalize_games(games: pd.DataFrame, events: pd.DataFrame, players: pd.DataF
     return df
 
 def main() -> None:
-    # Complete Kleier archive as of 2019-12-15
-    # now = pd.to_datetime('2019-12-15')
-    max_eid, max_pid = 670, 2970
-    get_events.main(max_eid)
-    get_players.main(max_pid)
-    get_ratings.main(max_eid, max_pid)
-
-    events                  = kleier.load_dataset('events'   ).pipe(fmt_events.format_events   )
-    groups                  = kleier.load_dataset('groups'   ).pipe(fmt_events.format_groups   )
-    standings, activity     = kleier.load_dataset('standings').pipe(fmt_events.format_standings)
-    results                 = kleier.load_dataset('results'  ).pipe(fmt_events.format_results  )
-    players                 = kleier.load_dataset('players'  ).pipe(fmt_players.format_players )
-    games                   = kleier.load_dataset('games'    ).pipe(fmt_players.format_games   )
-    ratings, history, lists = kleier.load_dataset('ratings'  ).pipe(fmt_ratings.format_ratings )
-
     events      = normalize_events(events)
     groups      = normalize_groups(groups)
     players     = normalize_players(players, standings)
