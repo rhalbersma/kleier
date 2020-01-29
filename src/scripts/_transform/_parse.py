@@ -13,7 +13,7 @@ import pandas as pd
 from scripts._extract import _scan
 from scripts._extract import _soup
 
-# Helper functions for _player
+# helper functions for _player
 
 def _name_from_header(header: bs4.element.Tag) -> str:
     return header.text.split('History of ')[1]
@@ -44,7 +44,7 @@ def _games(pid: int, table: bs4.element.Tag) -> pd.DataFrame:
         ]))
     )
 
-# Helper functions for _rat_table
+# helper functions for _rat_table
 
 def _long_rat_table(table: bs4.element.Tag) -> pd.DataFrame:
     rat_table = pd.read_html(str(table))[0]
@@ -87,7 +87,7 @@ def _history(long_rat_table: pd.DataFrame) -> pd.DataFrame:
         )
     )
 
-# Helper functions for _tourn_table
+# helper functions for _tourn_table
 
 def _results_from(s: str) -> Tuple[str]:
     return re.split(r'(^.*)\s?(\d{4}-\d{2}-\d{2})\s(.*$)', s)[1:-1]
@@ -200,7 +200,7 @@ def _group_activity_standings_results(eid: int, gid: int, table: bs4.element.Tag
     results = _results(cross_table)
     return group, activity, standings, results
 
-# Main parsing API: _player, _rat_table, _tourn_table, _tournaments_byplace
+# main parsing API: _player, _rat_table, _tourn_table, _tournaments_byplace
 
 def _player(pid: int, path: str) -> Tuple[pd.DataFrame]:
     soup = _soup._player(pid, path)

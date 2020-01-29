@@ -8,10 +8,12 @@ import os
 import click
 import pandas as pd
 
+from scripts._extract import _fetch
 from scripts._extract import _scan
-from scripts._extract import _wget
 from scripts._transform import _format
+from scripts._transform import _normalize
 from scripts._transform import _parse
+from scripts._transform import _reduce
 
 dataset_names = [
     'tournaments_byplace',
@@ -27,9 +29,9 @@ dataset_names = [
     'history'
 ]
 
-def _do_fetch(html_path: str) -> None:
+def _do_extract(html_path: str) -> None:
     click.echo('Fetching the list of tournaments.')
-    _wget._tournaments_byplace(html_path)
+    _fetch._tournaments_byplace(html_path)
     click.echo('Scanning the number of tournaments: ', nl=False)
     eid_seq = _scan._tourn_tables(html_path)
     click.echo(f'{len(eid_seq)}')
@@ -37,15 +39,15 @@ def _do_fetch(html_path: str) -> None:
     assert max(eid_seq) == len(eid_seq)
     with click.progressbar(eid_seq, label=f'Fetching {len(eid_seq)} tournament tables:') as bar:
         for eid in bar:
-            _wget._tourn_table(eid, html_path)
+            _fetch._tourn_table(eid, html_path)
     click.echo('Scanning the number of players: ', nl=False)
     pid_seq = range(1, 1 + max(_scan._players(html_path)))
     click.echo(f'{len(pid_seq)}')
     with click.progressbar(pid_seq, label=f'Fetching {len(pid_seq)} player histories:') as bar:
         for pid in bar:
-            _wget._player(pid, html_path)
+            _fetch._player(pid, html_path)
     click.echo('Fetching the rating history.')
-    _wget._rat_table(html_path, games=0, ntourn=len(eid_seq), items=len(eid_seq)*len(pid_seq))
+    _fetch._rat_table(html_path, games=0, ntourn=len(eid_seq), items=len(eid_seq)*len(pid_seq))
 
 def _do_parse(html_path: str, pkl_path: str) -> None:
     click.echo('Parsing the list of tournaments.')
@@ -94,6 +96,70 @@ def _do_format(pkl_path: str) -> None:
     lists = _format._lists(lists)
     ratings = _format._ratings(ratings)
     history = _format._history(history)
+    datasets = [
+        tournaments_byplace,
+        events,
+        groups,
+        activity,
+        standings,
+        results,
+        names,
+        games,
+        lists,
+        ratings,
+        history
+    ]
+    os.makedirs(pkl_path, exist_ok=True)
+    for key, value in zip(dataset_names, datasets):
+        value.to_pickle(os.path.join(pkl_path, key))
+
+def _do_normalize(pkl_path: str) -> None:
+    assert os.path.exists(pkl_path)
+    tournaments_byplace, events, groups, activity, standings, results, names, games, lists, ratings, history = tuple(
+        pd.read_pickle(os.path.join(pkl_path, file))
+        for file in dataset_names
+    )
+    tournaments_byplace = _normalize._tournaments_byplace(tournaments_byplace)
+    events      = _normalize._events(events)
+    groups      = _normalize._groups(groups)
+    names       = _normalize._names(names, standings)
+    ratings     = _normalize._ratings(ratings, events, names)
+    history     = _normalize._history(history, events, names)
+    lists       = _normalize._lists(lists, events)
+    standings   = _normalize._standings(standings, names)
+    activity    = _normalize._activity(activity, names)
+    results     = _normalize._results(results, standings)
+    games       = _normalize._games(games, events, names, ratings)
+    os.makedirs(pkl_path, exist_ok=True)
+    datasets = [
+        tournaments_byplace,
+        events,
+        groups,
+        activity,
+        standings,
+        results,
+        names,
+        games,
+        lists,
+        ratings,
+        history
+    ]
+    for key, value in zip(dataset_names, datasets):
+        value.to_pickle(os.path.join(pkl_path, key))
+
+def _do_reduce(pkl_path: str) -> None:
+    assert os.path.exists(pkl_path)
+    tournaments_byplace, events, groups, activity, standings, results, names, games, lists, ratings, history = tuple(
+        pd.read_pickle(os.path.join(pkl_path, file))
+        for file in dataset_names
+    )
+    games = _reduce._unplayed_W_dW(games, groups, results)
+
+def _do_transform(html_path: str, pkl_path: str) -> None:
+    _do_parse(html_path, pkl_path)
+    _do_format(pkl_path)
+    _do_normalize(pkl_path)
+    _do_reduce(pkl_path)
 
 @click.group()
 def kleier():
@@ -115,11 +181,11 @@ Do you want to continue?"""
     show_default=True,
     help='PATH is the directory where all .html files will be saved to.'
 )
-def fetch(html_path) -> None:
+def extract(html_path) -> None:
     """
-    Fetch all Classic Stratego data from https://www.kleier.net/.
+    Extract all Classic Stratego data from https://www.kleier.net/.
     """
-    _do_fetch(html_path)
+    _do_extract(html_path)
 
 @kleier.command()
 @click.option(
@@ -136,8 +202,8 @@ def fetch(html_path) -> None:
     show_default=True,
     help='PATH is the directory where all .pkl files will be saved to.'
 )
-def parse(html_path, pkl_path) -> None:
+def transform(html_path, pkl_path) -> None:
     """
-    Parse all Classic Stratego data into the Pandas DataFrame format.
+    Transform all Classic Stratego data into a normalized RDBS.
     """
-    _do_parse(html_path, pkl_path)
+    _do_transform(html_path, pkl_path)

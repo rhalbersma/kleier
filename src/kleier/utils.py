@@ -11,14 +11,14 @@ import pandas as pd
 def _get_resource(basename: str) -> str:
     return pkg_resources.resource_filename(__name__, os.path.join('data', basename))
 
-def _save_dataset(df: pd.DataFrame, name: str) -> None:
-    df.to_pickle(_get_resource(name + '.pkl'))
-
-def load_dataset(name: str) -> pd.DataFrame:
-    return pd.read_pickle(_get_resource(name + '.pkl'))
-
-def data_listdir() -> list:
+def get_dataset_names() -> list:
     return [
         os.path.splitext(df)[0]
         for df in pkg_resources.resource_listdir(__name__, 'data')
     ]
+
+def load_dataset(name: str) -> pd.DataFrame:
+    return pd.read_pickle(_get_resource(name + '.pkl'))
+
+def _save_dataset(df: pd.DataFrame, name: str) -> None:
+    df.to_pickle(_get_resource(name + '.pkl'))
