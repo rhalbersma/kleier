@@ -27,7 +27,7 @@ def _name(pid: int, name: str) -> pd.DataFrame:
         columns=['pid', 'name']
     )
 
-def _games(pid: int, table: bs4.element.Tag) -> pd.DataFrame:
+def _expected(pid: int, table: bs4.element.Tag) -> pd.DataFrame:
     return (pd
         .read_html(str(table), header=[1, 2])[0]
         .assign(
@@ -62,16 +62,16 @@ def _long_rat_table(table: bs4.element.Tag) -> pd.DataFrame:
     ])
     return long_rat_table
 
-def _lists(long_rat_table: pd.DataFrame) -> pd.DataFrame:
+def _dates(long_rat_table: pd.DataFrame) -> pd.DataFrame:
     return (long_rat_table
         .filter(regex='variable')
         .drop_duplicates()
         .reset_index(drop=True)
     )
 
-def _ratings(long_rat_table: pd.DataFrame, lists: pd.DataFrame) -> pd.DataFrame:
+def _ratings(long_rat_table: pd.DataFrame, dates: pd.DataFrame) -> pd.DataFrame:
     return (long_rat_table
-        .merge(lists
+        .merge(dates
             .iloc[0:1, :]
             , how='right', validate='many_to_one'
         )
@@ -200,7 +200,7 @@ def _group_activity_standings_results(eid: int, gid: int, table: bs4.element.Tag
     results = _results(cross_table)
     return group, activity, standings, results
 
-# main parsing API: _player, _rat_table, _tourn_table, _tournaments_byplace
+# main parsing API: _player, _rat_table, _tourn_table, _tournaments
 
 def _player(pid: int, path: str) -> Tuple[pd.DataFrame]:
     soup = _soup._player(pid, path)
@@ -211,8 +211,8 @@ def _player(pid: int, path: str) -> Tuple[pd.DataFrame]:
     if table:
         assert name_from_header == _name_from_table(table)
     name = _name(pid, name_from_header)
-    games = _games(pid, table) if table else None
-    return name, games
+    expected = _expected(pid, table) if table else None
+    return name, expected
 
 def _players(path: str) -> Tuple[pd.DataFrame]:
     return tuple(
@@ -226,10 +226,10 @@ def _players(path: str) -> Tuple[pd.DataFrame]:
 def _rat_table(path: str) -> Tuple[pd.DataFrame]:
     table = _soup._rat_table(path).find('table', {'summary': 'Stratego Rating'})
     long_rat_table = _long_rat_table(table)
-    lists = _lists(long_rat_table)
-    ratings = _ratings(long_rat_table, lists)
+    dates = _dates(long_rat_table)
+    ratings = _ratings(long_rat_table, dates)
     history = _history(long_rat_table)
-    return lists, ratings, history
+    return dates, ratings, history
 
 def _tourn_table(eid: int, path: str) -> Tuple[pd.DataFrame]:
     soup = _soup._tourn_table(eid, path)
@@ -268,16 +268,14 @@ def _tourn_tables(path: str) -> Tuple[pd.DataFrame]:
         ])
     )
 
-def _tournaments_byplace(path: str) -> pd.DataFrame:
+def _tournaments(path: str) -> pd.DataFrame:
     return (pd
         .DataFrame(
             data=[
                 (int(eid.get('href').split('=')[1]), nat.find('span').text)
-                for nat in _soup._tournaments_byplace(path).find('ul', {'class': 'nat'}).find_all('li', recursive=False)
+                for nat in _soup._tournaments(path).find('ul', {'class': 'nat'}).find_all('li', recursive=False)
                 for eid in nat.find_all('a')
             ],
             columns=['eid', 'nat']
         )
-        .sort_values('eid')
-        .reset_index(drop=True)
     )

@@ -16,22 +16,22 @@ from scripts._transform import _parse
 from scripts._transform import _reduce
 
 dataset_names = [
-    'tournaments_byplace',
+    'tournaments',
     'events',
     'groups',
     'activity',
     'standings',
     'results',
     'names',
-    'games',
-    'lists',
+    'expected',
+    'dates',
     'ratings',
     'history'
 ]
 
 def _do_extract(html_path: str) -> None:
     click.echo('Fetching the list of tournaments.')
-    _fetch._tournaments_byplace(html_path)
+    _fetch._tournaments(html_path)
     click.echo('Scanning the number of tournaments: ', nl=False)
     eid_seq = _scan._tourn_tables(html_path)
     click.echo(f'{len(eid_seq)}')
@@ -51,23 +51,23 @@ def _do_extract(html_path: str) -> None:
 
 def _do_parse(html_path: str, pkl_path: str) -> None:
     click.echo('Parsing the list of tournaments.')
-    tournaments_byplace = _parse._tournaments_byplace(html_path)
+    tournaments = _parse._tournaments(html_path)
     click.echo('Parsing the tournament events, groups, activity, standings and results.')
     events, groups, activity, standings, results = _parse._tourn_tables(html_path)
-    click.echo('Parsing the player names and games.')
-    names, games = _parse._players(html_path)
+    click.echo('Parsing the player names and expected results.')
+    names, expected = _parse._players(html_path)
     click.echo('Parsing the rating history.')
-    lists, ratings, history = _parse._rat_table(html_path)
+    dates, ratings, history = _parse._rat_table(html_path)
     datasets = [
-        tournaments_byplace,
+        tournaments,
         events,
         groups,
         activity,
         standings,
         results,
         names,
-        games,
-        lists,
+        expected,
+        dates,
         ratings,
         history
     ]
@@ -77,35 +77,35 @@ def _do_parse(html_path: str, pkl_path: str) -> None:
 
 def _do_format(pkl_path: str) -> None:
     assert os.path.exists(pkl_path)
-    tournaments_byplace, events, groups, activity, standings, results, names, games, lists, ratings, history = tuple(
+    tournaments, events, groups, activity, standings, results, names, expected, dates, ratings, history = tuple(
         pd.read_pickle(os.path.join(pkl_path, file))
         for file in dataset_names
     )
     click.echo('Formatting the list of tournaments.')
-    tournaments_byplace = _format._tournaments_byplace(tournaments_byplace)
+    tournaments = _format._tournaments(tournaments)
     click.echo('Formatting the tournament events, groups, activity, standings and results.')
-    events = _format._events(events)
-    groups = _format._groups(groups)
-    activity = _format._activity(activity)
-    standings = _format._standings(standings)
-    results = _format._results(results)
+    events      = _format._events(events)
+    groups      = _format._groups(groups)
+    activity    = _format._activity(activity)
+    standings   = _format._standings(standings)
+    results     = _format._results(results)
     click.echo('Formatting the player names and games.')
-    names = _format._names(names)
-    games = _format._games(games)
+    names       = _format._names(names)
+    expected    = _format._expected(expected)
     click.echo('Formatting the rating history.')
-    lists = _format._lists(lists)
-    ratings = _format._ratings(ratings)
-    history = _format._history(history)
-    datasets = [
-        tournaments_byplace,
+    dates       = _format._dates(dates)
+    ratings     = _format._ratings(ratings)
+    history     = _format._history(history)
+    datasets    = [
+        tournaments,
         events,
         groups,
         activity,
         standings,
         results,
         names,
-        games,
-        lists,
+        expected,
+        dates,
         ratings,
         history
     ]
@@ -115,32 +115,32 @@ def _do_format(pkl_path: str) -> None:
 
 def _do_normalize(pkl_path: str) -> None:
     assert os.path.exists(pkl_path)
-    tournaments_byplace, events, groups, activity, standings, results, names, games, lists, ratings, history = tuple(
+    tournaments, events, groups, activity, standings, results, names, expected, dates, ratings, history = tuple(
         pd.read_pickle(os.path.join(pkl_path, file))
         for file in dataset_names
     )
-    tournaments_byplace = _normalize._tournaments_byplace(tournaments_byplace)
+    tournaments = _normalize._tournaments(tournaments)
     events      = _normalize._events(events)
     groups      = _normalize._groups(groups)
     names       = _normalize._names(names, standings)
-    ratings     = _normalize._ratings(ratings, events, names)
+    dates       = _normalize._dates(dates)
+    ratings     = _normalize._ratings(ratings, names)
     history     = _normalize._history(history, events, names)
-    lists       = _normalize._lists(lists, events)
-    standings   = _normalize._standings(standings, names)
     activity    = _normalize._activity(activity, names)
+    standings   = _normalize._standings(standings, names)
     results     = _normalize._results(results, standings)
-    games       = _normalize._games(games, events, names, ratings)
+    expected    = _normalize._expected(expected, events, names, dates, ratings, results)
     os.makedirs(pkl_path, exist_ok=True)
     datasets = [
-        tournaments_byplace,
+        tournaments,
         events,
         groups,
         activity,
         standings,
         results,
         names,
-        games,
-        lists,
+        expected,
+        dates,
         ratings,
         history
     ]
@@ -149,11 +149,11 @@ def _do_normalize(pkl_path: str) -> None:
 
 def _do_reduce(pkl_path: str) -> None:
     assert os.path.exists(pkl_path)
-    tournaments_byplace, events, groups, activity, standings, results, names, games, lists, ratings, history = tuple(
+    tournaments, events, groups, activity, standings, results, names, expected, dates, ratings, history = tuple(
         pd.read_pickle(os.path.join(pkl_path, file))
         for file in dataset_names
     )
-    games = _reduce._unplayed_W_dW(games, groups, results)
+    expected = _reduce._unplayed_W_dW(expected, groups, results)
 
 def _do_transform(html_path: str, pkl_path: str) -> None:
     _do_parse(html_path, pkl_path)

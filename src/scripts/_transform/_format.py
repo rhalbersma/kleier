@@ -3,42 +3,43 @@
 #    (See accompanying file LICENSE_1_0.txt or copy at
 #          http://www.boost.org/LICENSE_1_0.txt)
 
-
 import re
-from typing import Tuple
 
 import numpy as np
 import pandas as pd
 
-def _tournaments_byplace(df: pd.DataFrame) -> pd.DataFrame:
-    return (df
-        .sort_values('eid')
+def _tournaments(tournaments: pd.DataFrame) -> pd.DataFrame:
+    key = ['eid']
+    attributes = ['nat']
+    return (tournaments
+        .loc[:, key + attributes]
+        .sort_values(key)
         .reset_index(drop=True)
     )
 
-def _events(df: pd.DataFrame) -> pd.DataFrame:
-    return (df
-        .loc[:, [
-            'eid', 'date', 'place'
-        ]]
-        .sort_values('eid')
-        .reset_index(drop=True)
-        .rename(columns={'eid' : 'id'})
+def _events(events: pd.DataFrame) -> pd.DataFrame:
+    key = ['eid']
+    attributes = ['date', 'place']
+    assert events.equals(events.sort_values(key))
+    return (events
+        .loc[:, key + attributes]
     )
 
-def _groups(df: pd.DataFrame) -> pd.DataFrame:
-    return (df
-        .sort_values(['eid', 'gid'])
-        .reset_index()
-        .drop(columns=['gid'])
-        .rename(columns={
-            'index': 'id',
-            'eid'  : 'event_id'
-        })
+def _groups(groups: pd.DataFrame) -> pd.DataFrame:
+    key = ['eid', 'gid']
+    attributes = [
+        'name', 'group', 'score_W', 'score_D', 'score_L', 'M', 'N',
+        'file_from', 'file_date', 'file_name', 'remarks'
+    ]
+    assert groups.equals(groups.sort_values(key))
+    return (groups
+        .loc[:, key + attributes]
     )
 
-def _activity(df: pd.DataFrame) -> pd.DataFrame:
-    return (df
+def _activity(activity: pd.DataFrame) -> pd.DataFrame:
+    key = ['pre', 'sur', 'nat', 'eid']
+    attributes = ['R', 'dR', 'eff_games']
+    return (activity
         .pipe(lambda x: x
             .set_axis(x
                 .columns
@@ -54,25 +55,22 @@ def _activity(df: pd.DataFrame) -> pd.DataFrame:
         .rename(columns=lambda x: re.sub(r'(.*)name', r'\1', x))
         .rename(columns=lambda x: re.sub(r'rating_(.*)', r'\1', x))
         .rename(columns={
-            'eid'        : 'event_id',
             'nationality': 'nat',
-            'value'      : 'Rn',            # Rn = a player's rating after a performance (Elo, 1978)
-            'change'     : 'dR'             # dR = Rn - Ro ('d' from 'delta')
+            'value'      : 'R',     # R  = a player's rating after a performance (Elo, 1978)
+            'change'     : 'dR'     # dR = a player's chaing in rating after a performance ('d' from 'delta')
         })
-        .astype(dtype={column: float           for column in ['Rn', 'dR']})
-        .astype(dtype={column: pd.Int64Dtype() for column in ['Rn', 'dR']})
-        .astype(dtype={column: float           for column in ['eff_games']})
-        .assign(Ro = lambda x: x.Rn - x.dR) # Ro = a player's rating before a performance (Elo, 1978)
-        .loc[:, [
-            'pre', 'sur', 'nat', 'event_id',
-            'eff_games', 'Rn', 'Ro', 'dR'
-        ]]
+        .astype(dtype={column: float   for column in ['R', 'dR']})
+        .astype(dtype={column: 'Int64' for column in ['R', 'dR']})
+        .astype(dtype={column: float   for column in ['eff_games']})
+        .loc[:, key + attributes]
         .drop_duplicates()
         .reset_index(drop=True)
     )
 
-def _standings(df: pd.DataFrame) -> pd.DataFrame:
-    return (df
+def _standings(standings: pd.DataFrame) -> pd.DataFrame:
+    key = ['eid', 'gid', 'pre', 'sur', 'nat']
+    attributes = ['rank', 'score', 'median', 'buchholz', 'dmr_W', 'dmr_N']
+    return (standings
         .pipe(lambda x: x
             .set_axis(x
                 .columns
@@ -89,7 +87,6 @@ def _standings(df: pd.DataFrame) -> pd.DataFrame:
         .rename(columns=lambda x: re.sub(r'rating_(.*)', r'\1', x))
         .rename(columns=lambda x: re.sub(r'standings_(.*)', r'\1', x))
         .rename(columns={
-            'eid'        : 'event_id',
             '#'          : 'rank',
             'nationality': 'nat'
         })
@@ -99,28 +96,16 @@ def _standings(df: pd.DataFrame) -> pd.DataFrame:
         )
         .astype(dtype={column: int   for column in ['rank', 'score', 'dmr_W', 'dmr_N']})
         .astype(dtype={column: float for column in ['median', 'buchholz']})
-        .pipe(lambda x: x
-            .merge(x
-                .loc[:, ['event_id', 'gid']]
-                .drop_duplicates(subset=['event_id', 'gid'])
-                .sort_values(['event_id', 'gid'])
-                .reset_index(drop=True)
-                .reset_index()
-                .rename(columns={'index': 'group_id'})
-            )
-        )
-        .loc[:, [
-            'group_id', 'pre', 'sur', 'nat',
-            'rank', 'score', 'median', 'buchholz', 'dmr_W', 'dmr_N'
-        ]]
+        .loc[:, key + attributes]
     )
 
-def _results(df: pd.DataFrame) -> pd.DataFrame:
-    return (df
+def _results(results: pd.DataFrame) -> pd.DataFrame:
+    key = ['eid', 'gid', 'round', 'rank1', 'rank2']
+    attributes = ['unplayed', 'W']
+    return (results
         .rename(columns=lambda x: x.lower())
         .rename(columns={
-            'eid'    : 'event_id',
-            '##'     : 'rank_1',
+            '##'     : 'rank1',
             'results': 'result'
         })
         .fillna({'result': '0?'})
@@ -130,8 +115,8 @@ def _results(df: pd.DataFrame) -> pd.DataFrame:
             regex=True
         )
         .assign(
-            rank_2 = lambda x: x.result.str.slice(0, -1),
-            W      = lambda x: x.result.str.slice(   -1)
+            rank2 = lambda x: x.result.str.slice(0, -1),
+            W     = lambda x: x.result.str.slice(   -1)
         )
         .replace({'W': {    # W = number of wins, draws counting 1/2 (Elo, 1978)
             '+': 1.0,
@@ -139,34 +124,22 @@ def _results(df: pd.DataFrame) -> pd.DataFrame:
             '-': 0.0,
             '?': np.nan
         }})
-        .astype(dtype={column: int for column in ['rank_1', 'rank_2']})
-        .pipe(lambda x: x
-            .merge(x
-                .loc[:, ['event_id', 'gid']]
-                .drop_duplicates(subset=['event_id', 'gid'])
-                .sort_values(['event_id', 'gid'])
-                .reset_index(drop=True)
-                .reset_index()
-                .rename(columns={'index': 'group_id'})
-            )
-        )
-        .loc[:, [
-            'group_id', 'rank_1', 'rank_2',
-            'round', 'unplayed', 'W'
-        ]]
+        .astype(dtype={column: int for column in ['rank1', 'rank2']})
+        .loc[:, key + attributes]
     )
 
-def _names(df: pd.DataFrame) -> pd.DataFrame:
-    return (df
-        .sort_values('pid')
-        .reset_index(drop=True)
-        .rename(columns={
-            'pid' : 'id'
-        })
+def _names(names: pd.DataFrame) -> pd.DataFrame:
+    key = ['pid']
+    attributes = ['name']
+    assert names.equals(names.sort_values(key))
+    return (names
+        .loc[:, key + attributes]
     )
 
-def _games(df: pd.DataFrame) -> pd.DataFrame:
-    return (df
+def _expected(expected: pd.DataFrame) -> pd.DataFrame:
+    key = ['date', 'place', 'pid1', 'pre2', 'sur2']
+    attributes = ['R2', 'significance', 'unplayed', 'W', 'We', 'dW']
+    return (expected
         .pipe(lambda x: x
             .set_axis(x
                 .columns
@@ -180,29 +153,27 @@ def _games(df: pd.DataFrame) -> pd.DataFrame:
         .rename(columns=lambda x: x.replace(' ', '_'))
         .rename(columns=lambda x: x.lower())
         .rename(columns=lambda x: re.sub(r'event_(.*)', r'\1', x))
-        .rename(columns=lambda x: re.sub(r'opponent_(.*)', r'\g<1>_2', x))
+        .rename(columns=lambda x: re.sub(r'opponent_(.*)', r'\g<1>2', x))
         .rename(columns=lambda x: re.sub(r'result_(.*)', r'\1', x))
         .rename(columns=lambda x: re.sub(r'(.*)name(.*)', r'\1\2', x))
         .rename(columns={
-            'pid'      : 'player_id_1',
-            'rating_2' : 'R_2',         # R = player 2's current rating
-            'expected' : 'We',          # We = the expected score W (Elo, 1978)
-            'observed' : 'W',           # W = the number of wins, draws counting 1/2 (Elo, 1978)
-            'net_yield': 'dW'           # dW = W - We ('d' from 'delta')
+            'pid'      : 'pid1',
+            'rating2'  : 'R2',  # R = player 2's current rating
+            'expected' : 'We',  # We = the expected score W (Elo, 1978)
+            'observed' : 'W',   # W = the number of wins, draws counting 1/2 (Elo, 1978)
+            'net_yield': 'dW'   # dW = W - We ('d' from 'delta')
         })
         .astype(dtype={
             'date': 'datetime64[ns]',
-            'R_2'  : pd.Int64Dtype()
+            'R2'  : 'Int64'
         })
-        .loc[:, [
-            'date', 'place', 'player_id_1', 'sur_2', 'pre_2',
-            'R_2', 'significance',
-            'unplayed', 'W', 'We', 'dW'
-        ]]
+        .loc[:, key + attributes]
     )
 
-def _lists(df: pd.DataFrame) -> pd.DataFrame:
-    return (df
+def _dates(dates: pd.DataFrame) -> pd.DataFrame:
+    key = ['date', 'place']
+    attributes = ['significance']
+    return (dates
         .pipe(lambda x: x
             .set_axis(pd
                 .Index([
@@ -213,9 +184,7 @@ def _lists(df: pd.DataFrame) -> pd.DataFrame:
             )
         )
         .drop(columns='variable_0')
-        .reset_index()
         .rename(columns={
-            'index'     : 'id',
             'variable_1': 'place',
             'variable_2': 'date',
             'variable_3': 'significance'
@@ -224,16 +193,15 @@ def _lists(df: pd.DataFrame) -> pd.DataFrame:
             'date'        : 'datetime64[ns]',
             'significance': float
         })
-        .loc[:, [
-            'id', 'date', 'place', 'significance'
-        ]]
-        .sort_values('id', ascending=False)
+        .loc[:, key + attributes]
+        .sort_index(ascending=False)
         .reset_index(drop=True)
-        .drop(columns=['id'])
     )
 
-def _ratings(df: pd.DataFrame) -> pd.DataFrame:
-    return (df
+def _ratings(ratings: pd.DataFrame) -> pd.DataFrame:
+    key = ['pre', 'sur', 'nat']
+    attributes = ['R', 'int_rank', 'nat_rank', 'eff_games', 'tot_games']
+    return (ratings
         .pipe(lambda x: x
             .set_axis(pd
                 .Index([
@@ -268,16 +236,15 @@ def _ratings(df: pd.DataFrame) -> pd.DataFrame:
                 np.nan
             )
         )
-        .astype(dtype={column: float           for column in ['R', 'int_rank', 'nat_rank']})
-        .astype(dtype={column: pd.Int64Dtype() for column in ['R', 'int_rank', 'nat_rank']})
-        .loc[:, [
-            'pre', 'sur', 'nat',
-            'R', 'int_rank', 'nat_rank', 'eff_games', 'tot_games'
-        ]]
+        .astype(dtype={column: float   for column in ['R', 'int_rank', 'nat_rank']})
+        .astype(dtype={column: 'Int64' for column in ['R', 'int_rank', 'nat_rank']})
+        .loc[:, key + attributes]
     )
 
-def _history(df: pd.DataFrame) -> pd.DataFrame:
-    return (df
+def _history(history: pd.DataFrame) -> pd.DataFrame:
+    key = ['date', 'place', 'pre', 'sur']
+    attributes = ['R']
+    return (history
         .pipe(lambda x: x
             .set_axis(pd
                 .Index([
@@ -300,33 +267,6 @@ def _history(df: pd.DataFrame) -> pd.DataFrame:
         .reset_index(drop=True)
         .astype(dtype={'date': 'datetime64[ns]'})
         .astype(dtype={'R'   : float           })
-        .astype(dtype={'R'   : pd.Int64Dtype() })
-        .loc[:, [
-            'pre', 'sur', 'date', 'place',
-            'R'
-        ]]
-        .pipe(lambda x: x
-            .merge(x
-                .loc[:, ['date', 'place']]
-                .drop_duplicates()
-                .reset_index()
-                .rename(columns={'index': 'eid'})
-                , how='left'
-            )
-        )
-        .pipe(lambda x: x
-            .merge(x
-                .loc[:, ['pre', 'sur']]
-                .drop_duplicates()
-                .reset_index()
-                .rename(columns={'index': 'rank'})
-                , how='left'
-            )
-        )
-        .sort_values(
-            by=['eid', 'R', 'rank'],
-            ascending=[False, False, True]
-        )
-        .reset_index(drop=True)
-        .drop(columns=['eid', 'rank'])
+        .astype(dtype={'R'   : 'Int64'         })
+        .loc[:, key + attributes]
     )

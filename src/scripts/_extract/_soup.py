@@ -20,5 +20,5 @@ def _rat_table(path: str) -> bs4.BeautifulSoup:
 def _tourn_table(eid: int, path: str) -> bs4.BeautifulSoup:
     return _do_soup(path, f'tourn_table-{eid}.html')
 
-def _tournaments_byplace(path: str) -> bs4.BeautifulSoup:
-    return _do_soup(path, 'tournaments_byplace.html')
+def _tournaments(path: str) -> bs4.BeautifulSoup:
+    return _do_soup(path, 'tournaments.html')

@@ -29,7 +29,7 @@ def _tourn_table(eid: int, path:str) -> None:
     url = f'https://www.kleier.net/cgi/tourn_table.php?eid={eid}'
     _do_fetch(path, file, url)
 
-def _tournaments_byplace(path: str) -> None:
-    file = 'tournaments_byplace.html'
+def _tournaments(path: str) -> None:
+    file = 'tournaments.html'
     url = 'https://www.kleier.net/tournaments/byplace/index.php'
     _do_fetch(path, file, url)

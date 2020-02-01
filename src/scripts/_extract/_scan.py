@@ -28,6 +28,6 @@ def _players(path: str) -> Sequence[int]:
 def _tourn_tables(path: str) -> Sequence[int]:
     return list(sorted({
         int(eid.get('href').split('=')[1])
-        for nat in _soup._tournaments_byplace(path).find('ul', {'class': 'nat'}).find_all('li', recursive=False)
+        for nat in _soup._tournaments(path).find('ul', {'class': 'nat'}).find_all('li', recursive=False)
         for eid in nat.find_all('a')
     }))

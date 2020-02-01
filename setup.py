@@ -20,8 +20,8 @@ setup(
     entry_points = {
         'console_scripts': [
             'kleier=scripts.cli:kleier',
-            'fetch=scripts.cli:fetch'
-            'parse=scripts.cli:parse'
+            'extract=scripts.cli:extract'
+            'transform=scripts.cli:transform'
         ],
     },
     install_requires=[
