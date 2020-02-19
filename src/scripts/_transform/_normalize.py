@@ -53,27 +53,15 @@ def _names(names: pd.DataFrame, standings: pd.DataFrame) -> pd.DataFrame:
     key = ['pid' ]
     assert _is_key(names, ['name'])
     assert _is_key(names, key)
-    pid_sur_pre_nat = (names
+    df = (names
         .merge(standings
             .loc[:, ['pre', 'sur', 'nat']]
             .drop_duplicates()
             .assign(name = lambda x: x.pre + ' ' + x.sur)
             .assign(name = lambda x: x.name.str.strip())
-            , how='outer', on=['name'], indicator=True, validate='one_to_one'
+            , how='left', on=['name'], validate='one_to_one'
         )
-    )
-    df = (pid_sur_pre_nat
-        .query('_merge == "both"')
-        .drop(columns=['name', '_merge'])
-        .append(pid_sur_pre_nat
-            .query('_merge != "both"')
-            .assign(
-                pre = lambda x: x.name.str.split(expand=True)[0],
-                sur = lambda x: x.name.str.split(expand=True)[1]
-            )
-            .drop(columns=['name', '_merge'])
-        )
-        .sort_values(key)
+        .drop(columns='name')
     )
     # 3NF
     assert _is_key(df, ['pre', 'sur'])

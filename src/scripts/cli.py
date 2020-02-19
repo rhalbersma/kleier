@@ -153,13 +153,12 @@ def _do_reduce(pkl_path: str) -> None:
         pd.read_pickle(os.path.join(pkl_path, file))
         for file in dataset_names
     )
-    expected = _reduce._unplayed_W_dW(expected, groups, results)
 
 def _do_transform(html_path: str, pkl_path: str) -> None:
     _do_parse(html_path, pkl_path)
     _do_format(pkl_path)
     _do_normalize(pkl_path)
-    _do_reduce(pkl_path)
+#    _do_reduce(pkl_path)
 
 @click.group()
 def kleier():
