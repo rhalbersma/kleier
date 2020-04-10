@@ -73,7 +73,7 @@ def _do_parse(html_path: str, pkl_path: str) -> None:
     ]
     os.makedirs(pkl_path, exist_ok=True)
     for key, value in zip(dataset_names, datasets):
-        value.to_pickle(os.path.join(pkl_path, key))
+        value.to_pickle(os.path.join(pkl_path, key + '.pkl'))
 
 def _do_format(pkl_path: str) -> None:
     assert os.path.exists(pkl_path)
@@ -111,7 +111,7 @@ def _do_format(pkl_path: str) -> None:
     ]
     os.makedirs(pkl_path, exist_ok=True)
     for key, value in zip(dataset_names, datasets):
-        value.to_pickle(os.path.join(pkl_path, key))
+        value.to_pickle(os.path.join(pkl_path, key + '.pkl'))
 
 def _do_normalize(pkl_path: str) -> None:
     assert os.path.exists(pkl_path)
@@ -145,20 +145,12 @@ def _do_normalize(pkl_path: str) -> None:
         history
     ]
     for key, value in zip(dataset_names, datasets):
-        value.to_pickle(os.path.join(pkl_path, key))
-
-def _do_reduce(pkl_path: str) -> None:
-    assert os.path.exists(pkl_path)
-    tournaments, events, groups, activity, standings, results, names, expected, dates, ratings, history = tuple(
-        pd.read_pickle(os.path.join(pkl_path, file))
-        for file in dataset_names
-    )
+        value.to_pickle(os.path.join(pkl_path, key + '.pkl'))
 
 def _do_transform(html_path: str, pkl_path: str) -> None:
     _do_parse(html_path, pkl_path)
     _do_format(pkl_path)
     _do_normalize(pkl_path)
-#    _do_reduce(pkl_path)
 
 @click.group()
 def kleier():

@@ -131,17 +131,17 @@ def _history(history: pd.DataFrame, events: pd.DataFrame, names: pd.DataFrame) -
     ]
     df = (history
         .merge(events
-            .loc[:, key[:1] + old_key[:2]]
-            , how='left', on=old_key[:2], validate='many_to_one'
+            .loc[:, ['eid', 'date', 'place']]
+            , how='left', on=['date', 'place'], validate='many_to_one'
         )
         .merge(names
-            .loc[:, key[1:] + old_key[2:]]
-            , how='left', on=old_key[2:], validate='many_to_one'
+            .loc[:, ['pid', 'pre', 'sur']]
+            , how='left', on=['pre', 'sur'], validate='many_to_one'
         )
         .loc[:, key + attributes]
         .pipe(lambda x: x
             .merge(x
-                .loc[:, key[1:]]
+                .loc[:, ['pid']]
                 .drop_duplicates(keep='first')
                 .reset_index()
                 , how='left'
@@ -171,8 +171,8 @@ def _activity(activity: pd.DataFrame, names: pd.DataFrame) -> pd.DataFrame:
     ]
     df = (activity
         .merge(names
-            .loc[:, key[:-1] + old_key[:-1]]
-            , how='left', on=old_key[:-1], validate='many_to_one'
+            .loc[:, ['pid', 'pre', 'sur', 'nat']]
+            , how='left', on=['pre', 'sur', 'nat'], validate='many_to_one'
         )
         .loc[:, key + attributes]
         .sort_values(key)
@@ -195,8 +195,8 @@ def _standings(standings: pd.DataFrame, names: pd.DataFrame) -> pd.DataFrame:
     ]
     df = (standings
         .merge(names
-            .loc[:, key[-1:] + old_key[2:]]
-            , how='left', on=old_key[2:], validate='many_to_one'
+            .loc[:, ['pid', 'pre', 'sur', 'nat']]
+            , how='left', on=['pre', 'sur', 'nat'], validate='many_to_one'
         )
         .loc[:, key + attributes]
     )
@@ -270,25 +270,25 @@ def _expected(expected: pd.DataFrame, events: pd.DataFrame, names: pd.DataFrame,
     ]
     named = (expected
         .merge(events
-            .loc[:, key[:1] + old_key[:2]]
-            , how='left', on=old_key[:2], validate='many_to_one'
+            .loc[:, ['eid', 'date', 'place']]
+            , how='left', on=['date', 'place'], validate='many_to_one'
         )
         .merge(names
             .add_suffix('2')
-            .loc[:, key[-1:] + old_key[-2:]]
-            , how='left', on=old_key[-2:], validate='many_to_one'
+            .loc[:, ['pid2', 'pre2', 'sur2']]
+            , how='left', on=['pre2', 'sur2'], validate='many_to_one'
         )
         .merge(ratings
             .loc[:, ['pid', 'R']]
             .add_suffix('1')
-            , how='left', on=key[1:2], validate='many_to_one'
+            , how='left', on=['pid1'], validate='many_to_one'
         )
         .merge(ratings
             .loc[:, ['pid', 'R']]
             .add_suffix('2')
             , how='left', on=['pid2', 'R2'], validate='many_to_one'
         )
-        .loc[:, key + old_key[-2:] + ['date', 'R1'] + attributes]
+        .loc[:, key + ['pre2', 'sur2', 'date', 'R1'] + attributes]
     )
     anonymous = (named
         .query('pre2.isnull() | sur2.isnull()')
@@ -304,7 +304,7 @@ def _expected(expected: pd.DataFrame, events: pd.DataFrame, names: pd.DataFrame,
         .loc[:, key + ['date', 'R1'] + attributes]
     )
     df = (named
-        .drop(columns=old_key[-2:])
+        .drop(columns=['pre2', 'sur2'])
         .append(anonymous)
         .sort_values(
             by=['pid1', 'eid', 'R2'],

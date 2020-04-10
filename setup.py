@@ -13,10 +13,7 @@ setup(
     author='Rein Halbersma',
     license='Boost Software License 1.0 (BSL-1.0)',
     packages=find_packages(where='src'),
-    package_dir={'':'src'},
-    package_data={
-        'kleier': ['data/*.pkl'],
-    },
+    package_dir={'': 'src'},
     entry_points = {
         'console_scripts': [
             'kleier=scripts.cli:kleier',

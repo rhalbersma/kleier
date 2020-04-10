@@ -3,9 +3,8 @@
 .vscode/
 
 # Python generated
-build/
-dist/
-src/*.egg-info
+*.egg-info
 *__pycache__
-src/scripts/data
-typescript
+
+# data files
+data/

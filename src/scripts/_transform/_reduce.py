@@ -38,13 +38,3 @@ def add_groups_format(groups: pd.DataFrame) -> pd.DataFrame:
         ]]
     )
 
-def main() -> None:
-    assert reduce_events_date_to_significance(events, lists, games)
-    games = games.drop(columns=['significance'])
-
-
-    assert compare_tot_games_ratings_results(ratings, results)
-    ratings = ratings.drop(columns=['tot_games'])
-
-    assert reduce_history_to_activity(history, activity)
-    activity = activity.drop(columns=['Rn', 'Ro', 'dR'])
